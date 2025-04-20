@@ -20,7 +20,7 @@ export default function Home() {
       </header>
       <main className="flex-1">
         <section className="w-full py-12 md:py-24 lg:py-32 xl:py-48">
-          <div className="container px-4 md:px-6">
+          <div className="container px-4 md:px-6 max-w-screen-xl mx-auto">
             <div className="flex flex-col items-center space-y-4 text-center">
               <div className="space-y-2">
                 <h1 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl lg:text-6xl/none">
@@ -43,8 +43,8 @@ export default function Home() {
           </div>
         </section>
         <section className="w-full py-12 md:py-24 lg:py-32 bg-gray-100 dark:bg-gray-800">
-          <div className="container px-4 md:px-6">
-            <div className="grid gap-6 lg:grid-cols-3 items-center">
+          <div className="container px-4 md:px-6 max-w-screen-xl mx-auto">
+            <div className="grid gap-6 lg:grid-cols-3">
               <div className="rounded-lg border bg-background p-6">
                 <div className="flex flex-col space-y-2">
                   <h3 className="text-xl font-bold">Connect with Notion</h3>
@@ -75,7 +75,7 @@ export default function Home() {
           </div>
         </section>
       </main>
-      <footer className="flex flex-col gap-2 sm:flex-row py-6 w-full shrink-0 items-center px-4 md:px-6 border-t">
+      <footer className="flex flex-col gap-2 sm:flex-row py-6 w-full shrink-0 items-center px-4 md:px-6 border-t max-w-screen-xl mx-auto">
         <p className="text-xs text-gray-500 dark:text-gray-400">
           © {new Date().getFullYear()} Remembot. All rights reserved.
         </p>

@@ -1,5 +1,18 @@
 import { cookies } from "next/headers";
+import crypto from "crypto";
 import twilio from "twilio";
+import { NextResponse } from "next/server";
+
+const accountSid = process.env.TWILIO_ACCOUNT_SID;
+const authToken = process.env.TWILIO_AUTH_TOKEN;
+const twilioPhoneNumber = process.env.TWILIO_PHONE_NUMBER;
+
+if (!accountSid || !authToken) {
+  throw new Error("Twilio environment variables are not configured correctly.");
+}
+
+// Initialize Twilio client (only if credentials exist)
+const client = accountSid && authToken ? twilio(accountSid, authToken) : null;
 
 export async function POST(request: Request) {
   // Check if user is authenticated with Notion
@@ -14,46 +27,44 @@ export async function POST(request: Request) {
     const { phoneNumber } = await request.json();
 
     if (!phoneNumber) {
-      return new Response("Phone number is required", { status: 400 });
+      return NextResponse.json(
+        { error: "Phone number is required" },
+        { status: 400 },
+      );
     }
 
-    // Initialize Twilio client
-    const client = twilio(
-      process.env.TWILIO_ACCOUNT_SID,
-      process.env.TWILIO_AUTH_TOKEN,
-    );
+    // Generate a 6-digit verification code
+    const verificationCode = crypto.randomInt(100000, 999999).toString();
+    const messageBody = `Your verification code is: ${verificationCode}`;
 
-    // Send verification SMS
-    const message = await client.messages.create({
-      body: "Welcome to Remembot! Your verification code is: 123456",
-      from: process.env.TWILIO_PHONE_NUMBER,
-      to: phoneNumber,
+    await client?.messages.create({
+      body: messageBody,
+      from: twilioPhoneNumber,
+      to: phoneNumber, // User's phone number provided in the request body
     });
 
-    // Store the phone number in a cookie for later verification
-    cookieStore.set("phone_verification_number", phoneNumber, {
+    cookieStore.set("phone_verification_code", verificationCode, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
+      secure: true,
+      maxAge: 60 * 10, // 10 minutes
+      path: "/",
+    });
+    cookieStore.set("phone_number", phoneNumber, {
+      httpOnly: true,
+      secure: true,
       maxAge: 60 * 10, // 10 minutes
       path: "/",
     });
 
-    return new Response(JSON.stringify({ success: true, sid: message.sid }), {
-      headers: { "Content-Type": "application/json" },
-    });
+    return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Error sending verification:", error);
-    return new Response(
-      JSON.stringify({
-        error:
-          error instanceof Error
-            ? error.message
-            : "Failed to send verification",
-      }),
-      {
-        status: 500,
-        headers: { "Content-Type": "application/json" },
-      },
+    console.error("Twilio send verification error:", error);
+    const errorMessage =
+      error instanceof Error ? error.message : "Failed to send verification";
+    // Avoid leaking sensitive error details in production
+    return NextResponse.json(
+      { error: "Could not send verification code via WhatsApp." },
+      { status: 500 },
     );
   }
 }

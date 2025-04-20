@@ -42,7 +42,7 @@ export default function LoginPage() {
               className="w-full flex items-center justify-center gap-2 bg-black hover:bg-gray-800 text-white"
             >
               <Image
-                src="/placeholder.svg?height=24&width=24"
+                src="/notion-logo-white.svg"
                 alt="Notion logo"
                 width={24}
                 height={24}

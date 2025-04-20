@@ -58,11 +58,11 @@ export async function GET(request: Request) {
       maxAge: 60 * 60 * 24 * 30, // 30 days
       path: "/",
     });
-
-    // Redirect to the phone verification page
-    redirect("/dashboard/phone-verification");
   } catch (error) {
     console.error("Error during Notion OAuth:", error);
     return new Response("Internal server error", { status: 500 });
   }
+
+  // Redirect to the phone verification page
+  return redirect("/dashboard/phone-verification");
 }

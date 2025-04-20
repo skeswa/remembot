@@ -97,7 +97,8 @@ export default function PhoneVerificationPage() {
         <CardHeader>
           <CardTitle>Verify Your Phone Number</CardTitle>
           <CardDescription>
-            We'll send you a verification code to confirm your phone number
+            We'll send a verification code over SMS to confirm your phone number.
+            Make sure you have your phone handy.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -111,14 +112,14 @@ export default function PhoneVerificationPage() {
                   value={phoneNumber}
                   onChange={(e) => setPhoneNumber(e.target.value)}
                   required
+                  type="tel"
                 />
                 <p className="text-xs text-muted-foreground">
-                  Enter your phone number in international format (e.g., +1 for
-                  US)
+                  Enter your phone number in international format (e.g., +15551234567).
                 </p>
               </div>
               <Button type="submit" className="w-full" disabled={isSubmitting}>
-                {isSubmitting ? "Sending..." : "Send Verification Code"}
+                {isSubmitting ? "Sending..." : "Send Verification"}
               </Button>
             </form>
           ) : (
@@ -131,9 +132,11 @@ export default function PhoneVerificationPage() {
                   value={verificationCode}
                   onChange={(e) => setVerificationCode(e.target.value)}
                   required
+                  inputMode="numeric"
+                  pattern="\d{6}"
                 />
                 <p className="text-xs text-muted-foreground">
-                  Enter the 6-digit code sent to your phone
+                  Enter the 6-digit code sent to your phone.
                 </p>
               </div>
               <Button type="submit" className="w-full" disabled={isSubmitting}>

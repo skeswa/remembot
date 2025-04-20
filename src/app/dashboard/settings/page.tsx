@@ -3,7 +3,7 @@
 import type React from "react";
 
 import { useState, useEffect } from "react";
-import { Button } from "//components/ui/button";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -11,9 +11,9 @@ import {
   CardFooter,
   CardHeader,
   CardTitle,
-} from "//components/ui/card";
-import { Input } from "//components/ui/input";
-import { Label } from "//components/ui/label";
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 
 export default function SettingsPage() {
@@ -119,8 +119,8 @@ export default function SettingsPage() {
         <CardContent>
           <div className="space-y-4">
             <p className="text-sm text-muted-foreground">
-              We'll fetch your available databases from Notion. Select the one
-              where you want your todos to be added.
+              We&apos;ll fetch your available databases from Notion. Select the
+              one where you want your todos to be added.
             </p>
             <Button variant="outline">Select Database</Button>
           </div>

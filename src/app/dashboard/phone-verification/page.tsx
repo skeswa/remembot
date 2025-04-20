@@ -6,7 +6,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
-import { Button } from "//components/ui/button";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -14,9 +14,9 @@ import {
   CardFooter,
   CardHeader,
   CardTitle,
-} from "//components/ui/card";
-import { Input } from "//components/ui/input";
-import { Label } from "//components/ui/label";
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 export default function PhoneVerificationPage() {
   const [phoneNumber, setPhoneNumber] = useState("");
@@ -97,8 +97,8 @@ export default function PhoneVerificationPage() {
         <CardHeader>
           <CardTitle>Verify Your Phone Number</CardTitle>
           <CardDescription>
-            We'll send a verification code over SMS to confirm your phone number.
-            Make sure you have your phone handy.
+            We&apos;ll send a verification code over SMS to confirm your phone
+            number. Make sure you have your phone handy.
           </CardDescription>
         </CardHeader>
         <CardContent>

@@ -62,9 +62,6 @@ export async function POST(request: Request) {
     const errorMessage =
       error instanceof Error ? error.message : "Failed to send verification";
     // Avoid leaking sensitive error details in production
-    return NextResponse.json(
-      { error: "Could not send verification code via WhatsApp." },
-      { status: 500 },
-    );
+    return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Button } from "//components/ui/button";
+import { Button } from "@/components/ui/button";
 import { ArrowRight } from "lucide-react";
 
 export default function Home() {
@@ -28,7 +28,7 @@ export default function Home() {
                 </h1>
                 <p className="mx-auto max-w-[700px] text-gray-500 md:text-xl dark:text-gray-400">
                   Remembot helps you capture tasks on the go. Send a text
-                  message and we'll add it to your Notion database.
+                  message and we&apos;ll add it to your Notion database.
                 </p>
               </div>
               <div className="space-x-4">
@@ -66,8 +66,8 @@ export default function Home() {
                 <div className="flex flex-col space-y-2">
                   <h3 className="text-xl font-bold">Text Your Todos</h3>
                   <p className="text-sm text-gray-500 dark:text-gray-400">
-                    Send a text message and we'll add it to your Notion database
-                    instantly.
+                    Send a text message and we&apos;ll add it to your Notion
+                    database instantly.
                   </p>
                 </div>
               </div>

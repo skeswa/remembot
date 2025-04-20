@@ -5,8 +5,8 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-} from "//components/ui/card";
-import { Button } from "//components/ui/button";
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { MessageSquare, Settings } from "lucide-react";
 
@@ -37,7 +37,8 @@ export default async function Dashboard() {
               {process.env.TWILIO_PHONE_NUMBER || "+1 (555) 123-4567"}
             </p>
             <p className="text-sm text-muted-foreground mt-2">
-              Simply text your todo and we'll add it to your Notion database
+              Simply text your todo and we&apos;ll add it to your Notion
+              database
             </p>
           </CardContent>
         </Card>

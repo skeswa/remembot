@@ -4,7 +4,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-} from "//components/ui/card";
+} from "@/components/ui/card";
 
 export default function MessagesPage() {
   // In a real app, you would fetch message history from your database
@@ -34,7 +34,7 @@ export default function MessagesPage() {
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Message History</h1>
         <p className="text-muted-foreground">
-          View all the todos you've sent via SMS
+          View all the todos you&apos;ve sent via SMS
         </p>
       </div>
 
@@ -67,7 +67,7 @@ export default function MessagesPage() {
             </div>
           ) : (
             <p className="text-sm text-muted-foreground">
-              You haven't sent any SMS todos yet. Start by sending a text
+              You haven&apos;t sent any SMS todos yet. Start by sending a text
               message to your Remembot number.
             </p>
           )}

@@ -1,0 +1,17 @@
+{
+  "/api/auth/logout/route": "/api/auth/logout",
+  "/api/notion/callback/route": "/api/notion/callback",
+  "/api/twilio/send-verification/route": "/api/twilio/send-verification",
+  "/api/twilio/webhook/route": "/api/twilio/webhook",
+  "/api/twilio/verify-code/route": "/api/twilio/verify-code",
+  "/api/user/profile/route": "/api/user/profile",
+  "/api/user/update-phone/route": "/api/user/update-phone",
+  "/favicon.ico/route": "/favicon.ico",
+  "/_not-found/page": "/_not-found",
+  "/login/page": "/login",
+  "/page": "/",
+  "/dashboard/messages/page": "/dashboard/messages",
+  "/dashboard/page": "/dashboard",
+  "/dashboard/phone-verification/page": "/dashboard/phone-verification",
+  "/dashboard/settings/page": "/dashboard/settings"
+}

@@ -10,5 +10,9 @@
     "dev": "pnpm --filter @remembot/web dev",
     "build": "pnpm --filter @remembot/web build",
     "start": "pnpm --filter @remembot/web start"
-  }
+  },
+  "devDependencies": {
+    "turbo": "^2.5.0"
+  },
+  "packageManager": "pnpm@10.8.1"
 }

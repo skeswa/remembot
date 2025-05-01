@@ -1,5 +1,7 @@
 import { WebSocket } from "ws";
 
+import { logger } from "@/lib/logger";
+
 type CourierClientId = string;
 
 export class CourierClient {

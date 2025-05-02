@@ -6,9 +6,12 @@ const server = Bun.serve({
     const path = new URL(req.url).pathname;
 
     if (path === "/courier") {
+      console.log("Upgrading to WebSocket:", req);
+
       const success = server.upgrade(req);
 
       if (success) {
+        console.log("WebSocket upgrade succeeded");
         // Bun automatically returns a 101 Switching Protocols
         // if the upgrade succeeds
         return undefined;
@@ -47,11 +50,17 @@ const server = Bun.serve({
     return new Response("Page not found", { status: 404 });
   },
   websocket: {
+    open: (_) => {
+      console.log("Client connected");
+    },
     // this is called when a message is received
     async message(ws, message) {
       console.log(`Received ${message}`);
       // send back a message
       ws.send(`You said: ${message}`);
+    },
+    close: (_) => {
+      console.log("Client disconnected");
     },
   },
 });

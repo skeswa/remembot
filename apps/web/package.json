@@ -4,7 +4,7 @@
   "type": "module",
   "private": true,
   "scripts": {
-    "dev": "next dev --turbopack",
+    "dev": "dotenv -- next dev --turbopack",
     "build": "next build",
     "start": "next start",
     "lint": "next lint --max-warnings 0",
@@ -22,6 +22,7 @@
     "@types/node": "^22.15.3",
     "@types/react": "19.1.0",
     "@types/react-dom": "19.1.1",
+    "dotenv-cli": "^8.0.0",
     "eslint": "^9.25.0",
     "typescript": "5.8.2"
   }

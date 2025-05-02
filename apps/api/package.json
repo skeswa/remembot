@@ -1,0 +1,21 @@
+{
+  "name": "api",
+  "version": "0.1.0",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "dev": "bun run --hot ./src/index.ts",
+    "build": "bun build ./src/index.ts --compile --outfile ./dist/remembot-api",
+    "start": "./dist/remembot-api",
+    "test": "bun test",
+    "lint": "eslint . --ext .ts,.tsx --report-unused-disable-directives --max-warnings 0",
+    "check-types": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.26.0",
+    "@repo/eslint-config": "*",
+    "@repo/typescript-config": "*",
+    "@types/bun": "^1.2.11",
+    "eslint": "^9.26.0"
+  }
+}

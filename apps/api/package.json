@@ -1,12 +1,12 @@
 {
-  "name": "courier",
+  "name": "api",
   "version": "0.1.0",
   "type": "module",
   "private": true,
   "scripts": {
     "dev": "bun run --hot ./src/index.ts",
-    "build": "bun build ./src/index.ts --compile --outfile ./dist/courier",
-    "start": "./dist/courier",
+    "build": "bun build ./src/index.ts --compile --outfile ./dist/api",
+    "start": "./dist/api",
     "test": "bun test",
     "lint": "eslint . --ext .ts,.tsx --report-unused-disable-directives --max-warnings 0",
     "check-types": "tsc --noEmit"

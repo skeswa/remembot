@@ -1,18 +1,24 @@
 {
-  "name": "@remembot/root",
-  "version": "0.0.0",
+  "name": "remembot",
   "private": true,
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev",
+    "lint": "turbo run lint",
+    "format": "prettier --write \"**/*.{ts,tsx,md}\"",
+    "check-types": "turbo run check-types"
+  },
+  "devDependencies": {
+    "prettier": "^3.5.3",
+    "turbo": "^2.5.2",
+    "typescript": "5.8.2"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "packageManager": "bun@1.2.11",
   "workspaces": [
     "apps/*",
     "packages/*"
-  ],
-  "scripts": {
-    "dev": "pnpm --filter @remembot/web dev",
-    "build": "pnpm --filter @remembot/web build",
-    "start": "pnpm --filter @remembot/web start"
-  },
-  "devDependencies": {
-    "turbo": "^2.5.0"
-  },
-  "packageManager": "pnpm@10.8.1"
+  ]
 }

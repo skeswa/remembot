@@ -1,1 +1,1 @@
-# `@remembot/courier`
+# `courier`

@@ -19,38 +19,104 @@ jobs:
   detect-changes:
     runs-on: ubuntu-latest
     outputs:
-      api: ${{ steps.filter.outputs.api }}
-      web: ${{ steps.filter.outputs.web }}
-      courier: ${{ steps.filter.outputs.courier }}
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: dorny/paths-filter@v2
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Find all apps
+        id: find-apps
+        run: |
+          # Find all directories in the apps directory
+          APPS=$(find apps -maxdepth 1 -mindepth 1 -type d -exec basename {} \; | sort)
+          echo "Found apps: $APPS"
+          echo "apps<<EOF" >> $GITHUB_OUTPUT
+          echo "$APPS" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Generate dynamic filters
+        id: dynamic-filters
+        run: |
+          # Get all apps
+          APPS="${{ steps.find-apps.outputs.apps }}"
+          
+          # Start building the filter configuration
+          FILTERS="{"
+          
+          # Add filter for each app
+          for app in $APPS; do
+            # Skip empty entries
+            [ -z "$app" ] && continue
+            
+            FILTERS+="\"$app\": [\"apps/$app/**\", \"packages/**\"],"
+          done
+          
+          # Remove trailing comma and close the JSON object
+          FILTERS="${FILTERS%,}}"
+          
+          echo "filters=$FILTERS" >> $GITHUB_OUTPUT
+          echo "Generated filters: $FILTERS"
+
+      - name: Detect changes per app
+        uses: dorny/paths-filter@v2
         id: filter
         with:
-          filters: |
-            api:
-              - 'apps/api/**'
-              - 'packages/**'
-            web:
-              - 'apps/web/**'
-              - 'packages/**'
-            courier:
-              - 'apps/courier/**'
-              - 'packages/**'
+          filters: ${{ fromJson(steps.dynamic-filters.outputs.filters) }}
+
+      - name: Create app matrix with port mapping
+        id: set-matrix
+        run: |
+          # Get all apps
+          APPS="${{ steps.find-apps.outputs.apps }}"
+          
+          # Get changes
+          CHANGES='${{ steps.filter.outputs.changes }}'
+          
+          # Create an array for the matrix
+          MATRIX_APPS="["
+          MATRIX_INCLUDE="["
+          
+          # Default port mapping (can be expanded or moved to a config file)
+          declare -A PORT_MAP
+          PORT_MAP["api"]="3001"
+          PORT_MAP["web"]="3000"
+          PORT_MAP["courier"]="3002"
+          
+          # Add each changed app to the matrix
+          for app in $APPS; do
+            # Skip empty entries
+            [ -z "$app" ] && continue
+            
+            # Check if this app changed
+            IS_CHANGED=$(echo "$CHANGES" | jq -r ".$app // \"false\"")
+            if [ "$IS_CHANGED" == "true" ]; then
+              # Add to matrix apps array
+              MATRIX_APPS+="\"$app\","
+              
+              # Get port (default to 3000 if not specified)
+              PORT="${PORT_MAP[$app]:-3000}"
+              
+              # Add to include array with port
+              MATRIX_INCLUDE+="{\"app\":\"$app\",\"port\":\"$PORT\"},"
+            fi
+          done
+          
+          # Remove trailing comma and close arrays
+          MATRIX_APPS="${MATRIX_APPS%,}]"
+          MATRIX_INCLUDE="${MATRIX_INCLUDE%,}]"
+          
+          # Create the final matrix JSON
+          MATRIX="{\"app\":$MATRIX_APPS,\"include\":$MATRIX_INCLUDE}"
+          
+          echo "matrix=$MATRIX" >> $GITHUB_OUTPUT
+          echo "Generated matrix: $MATRIX"
 
   build-and-push:
     needs: detect-changes
+    if: ${{ fromJson(needs.detect-changes.outputs.matrix).app[0] != null }}
     strategy:
-      matrix:
-        app: [api, web, courier]
-        include:
-          - app: api
-            port: 3001
-          - app: web
-            port: 3000
-          - app: courier
-            port: 3002
-    if: ${{ needs.detect-changes.outputs[matrix.app] == 'true' }}
+      matrix: ${{ fromJson(needs.detect-changes.outputs.matrix) }}
+      fail-fast: false
     runs-on: ubuntu-latest
     permissions:
       contents: read

@@ -1,0 +1,148 @@
+name: Validate PR
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'apps/**'
+      - 'packages/**'
+
+jobs:
+  detect-apps:
+    runs-on: ubuntu-latest
+    outputs:
+      app_changes: ${{ steps.detect-changes.outputs.changes }}
+      all_apps: ${{ steps.find-apps.outputs.apps }}
+      any_app_changed: ${{ steps.check-any-changed.outputs.changed }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Find all apps
+        id: find-apps
+        run: |
+          # Find all directories in the apps directory
+          APPS=$(find apps -maxdepth 1 -mindepth 1 -type d -exec basename {} \; | jq -R -s -c 'split("\n") | map(select(length > 0))')
+          echo "apps=$APPS" >> $GITHUB_OUTPUT
+          echo "Found apps: $APPS"
+
+      - name: Check for changed files
+        uses: dorny/paths-filter@v2
+        id: changes
+        with:
+          filters: |
+            apps:
+              - 'apps/**'
+              - 'packages/**'
+
+      - name: Generate dynamic filters
+        id: dynamic-filters
+        run: |
+          # Get all apps as JSON array
+          APPS_JSON='${{ steps.find-apps.outputs.apps }}'
+          
+          # Convert to shell array
+          readarray -t APPS_ARRAY < <(echo "$APPS_JSON" | jq -r '.[]')
+          
+          # Start building the filter configuration
+          FILTERS="{"
+          
+          # Add filter for each app
+          for app in "${APPS_ARRAY[@]}"; do
+            # Skip empty entries
+            [ -z "$app" ] && continue
+            
+            FILTERS+="\"$app\": [\"apps/$app/**\", \"packages/**\"],"
+          done
+          
+          # Remove trailing comma and close the JSON object
+          FILTERS="${FILTERS%,}}"
+          
+          echo "filters=$FILTERS" >> $GITHUB_OUTPUT
+          echo "Generated filters: $FILTERS"
+
+      - name: Detect changes per app
+        uses: dorny/paths-filter@v2
+        id: detect-changes
+        with:
+          filters: ${{ fromJson(steps.dynamic-filters.outputs.filters) }}
+
+      - name: Check if any app changed
+        id: check-any-changed
+        run: |
+          # Get all apps as JSON array
+          APPS_JSON='${{ steps.find-apps.outputs.apps }}'
+          
+          # Get all changes as JSON object
+          CHANGES_JSON='${{ steps.detect-changes.outputs.changes }}'
+          
+          # Convert apps to shell array
+          readarray -t APPS_ARRAY < <(echo "$APPS_JSON" | jq -r '.[]')
+          
+          # Check if any app changed
+          ANY_CHANGED=false
+          for app in "${APPS_ARRAY[@]}"; do
+            # Skip empty entries
+            [ -z "$app" ] && continue
+            
+            # Check if this app changed
+            IS_CHANGED=$(echo "$CHANGES_JSON" | jq -r ".$app")
+            if [ "$IS_CHANGED" == "true" ]; then
+              ANY_CHANGED=true
+              break
+            fi
+          done
+          
+          echo "changed=$ANY_CHANGED" >> $GITHUB_OUTPUT
+          echo "Any app changed: $ANY_CHANGED"
+
+  check-changeset:
+    needs: detect-apps
+    runs-on: ubuntu-latest
+    if: needs.detect-apps.outputs.any_app_changed == 'true'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Check for Changesets
+        id: check-changeset
+        run: |
+          if [ -n "$(ls -A .changeset/*.md 2>/dev/null)" ]; then
+            echo "has_changeset=true" >> $GITHUB_OUTPUT
+            echo "✅ Changeset found"
+          else
+            echo "has_changeset=false" >> $GITHUB_OUTPUT
+            echo "❌ No changeset found"
+          fi
+
+      - name: Show changeset requirement
+        if: steps.check-changeset.outputs.has_changeset != 'true'
+        run: |
+          echo "::error::No changeset found. Please create a changeset by running 'bun changeset' and commit the generated files."
+          exit 1
+
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: '1.2.11'
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Type check
+        run: bun run check-types
+
+      - name: Lint
+        run: bun run lint
+
+      - name: Build
+        run: bun run build 

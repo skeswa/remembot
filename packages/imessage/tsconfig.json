@@ -1,0 +1,14 @@
+{
+  "extends": "@repo/typescript-config/bun.json",
+  "compilerOptions": {
+    "baseUrl": "./src",
+    "paths": {
+      "@/*": ["./*"],
+      "better-osa-imessage": ["../types/better-osa-imessage.d.ts"]
+    },
+    "typeRoots": [
+      "../../node_modules/@types",
+      "./types"
+    ]
+  }
+}

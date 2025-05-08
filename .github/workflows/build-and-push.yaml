@@ -1,0 +1,104 @@
+name: Build and Push Images
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'apps/**'
+      - 'packages/**'
+      - '.changeset/**'
+      - '**/package.json'
+      - '.github/workflows/build-and-push.yaml'
+
+env:
+  REGISTRY: ghcr.io
+  OWNER: ${{ github.repository_owner }}
+
+jobs:
+  detect-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      api: ${{ steps.filter.outputs.api }}
+      web: ${{ steps.filter.outputs.web }}
+      courier: ${{ steps.filter.outputs.courier }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v2
+        id: filter
+        with:
+          filters: |
+            api:
+              - 'apps/api/**'
+              - 'packages/**'
+            web:
+              - 'apps/web/**'
+              - 'packages/**'
+            courier:
+              - 'apps/courier/**'
+              - 'packages/**'
+
+  build-and-push:
+    needs: detect-changes
+    strategy:
+      matrix:
+        app: [api, web, courier]
+        include:
+          - app: api
+            port: 3001
+          - app: web
+            port: 3000
+          - app: courier
+            port: 3002
+    if: ${{ needs.detect-changes.outputs[matrix.app] == 'true' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.OWNER }}/remembot/${{ matrix.app }}
+          tags: |
+            type=sha,format=short
+            type=raw,value=latest
+            type=raw,value={{date 'YYYYMMDD-HHmmss'}}
+
+      - name: Build and push
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./apps/${{ matrix.app }}/Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Update image tag in k8s manifest
+        run: |
+          COMMIT_SHA=$(echo ${{ github.sha }} | cut -c1-7)
+          sed -i "s|\${REGISTRY}/remembot/${{ matrix.app }}:.*|\${REGISTRY}/remembot/${{ matrix.app }}:$COMMIT_SHA|g" apps/${{ matrix.app }}/k8s/deployment.yaml
+
+      - name: Commit and push k8s manifests
+        run: |
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
+          git add apps/${{ matrix.app }}/k8s/deployment.yaml
+          git commit -m "chore: update ${{ matrix.app }} image to latest commit" || echo "No changes to commit"
+          git push 

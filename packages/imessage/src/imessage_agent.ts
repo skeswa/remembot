@@ -1,5 +1,3 @@
-import * as imessage from 'better-osa-imessage';
-
 export interface IMessageAgent {
   /**
    * Get all messages from the current user's iMessage account.

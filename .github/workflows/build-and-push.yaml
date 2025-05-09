@@ -52,7 +52,7 @@ jobs:
           done
           
           # Remove trailing comma and close the JSON object
-          FILTERS="${FILTERS%,}}"
+          FILTERS='${FILTERS%,}}'
           
           echo "filters=$FILTERS" >> $GITHUB_OUTPUT
           echo "Generated filters: $FILTERS"

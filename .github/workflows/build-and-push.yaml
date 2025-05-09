@@ -37,25 +37,44 @@ jobs:
       - name: Generate dynamic filters
         id: dynamic-filters
         run: |
-          # Get all apps
+          # Get all apps from the previous step's output
           APPS="${{ steps.find-apps.outputs.apps }}"
           
-          # Start building the filter configuration
-          FILTERS="{"
+          # Initialize an empty string to build the YAML content
+          FILTERS_YAML=""
           
-          # Add filter for each app
+          # Loop through each app (assuming APPS is a space-separated string)
           for app in $APPS; do
-            # Skip empty entries
-            [ -z "$app" ] && continue
+            # Skip if the app name is empty (e.g., if there were multiple spaces in APPS)
+            if [ -z "$app" ]; then
+              continue
+            fi
             
-            FILTERS+="\"$app\": [\"apps/$app/**\", \"packages/**\"],"
+            # Append the YAML block for the current app to FILTERS_YAML
+            # Using printf for precise formatting, including newlines and indentation.
+            # YAML syntax:
+            # app_name:
+            #   - 'apps/app_name/**'
+            #   - 'packages/**'
+            FILTERS_YAML+=$(printf "%s:\n  - 'apps/%s/**'\n  - 'packages/**'\n" "$app" "$app")
           done
           
-          # Remove trailing comma and close the JSON object
-          FILTERS="${FILTERS%,}}"
+          # Output the generated YAML string to GITHUB_OUTPUT using heredoc syntax
+          # This makes the 'filters' output available as steps.dynamic-filters.outputs.filters
+          echo "filters<<EOF" >> $GITHUB_OUTPUT
+          echo "${FILTERS_YAML}" >> $GITHUB_OUTPUT # If FILTERS_YAML is empty, this writes a newline.
+                                              # If it has content, it writes the content.
+                                              # dorny/paths-filter should handle an empty/newline filter string gracefully.
+          echo "EOF" >> $GITHUB_OUTPUT
           
-          echo "filters=$FILTERS" >> $GITHUB_OUTPUT
-          echo "Generated filters: $FILTERS"
+          # Diagnostic log to show what was generated
+          echo "Generated YAML filters for GITHUB_OUTPUT:"
+          if [ -n "${FILTERS_YAML}" ]; then
+            echo "${FILTERS_YAML}"
+          else
+            echo "[EMPTY_STRING] (No apps found or APPS variable was empty)"
+          fi
+          echo "--- End of Generated YAML filters ---"
 
       - name: Detect changes per app
         uses: dorny/paths-filter@v2

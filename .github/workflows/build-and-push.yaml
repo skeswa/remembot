@@ -88,8 +88,8 @@ jobs:
           # Get all apps
           APPS="${{ steps.find-apps.outputs.apps }}"
           
-          # Get changes
-          CHANGES='${{ steps.filter.outputs.changes }}'
+          # Get changes from the filter step
+          CHANGES='${{ toJSON(steps.filter.outputs) }}'
           
           # Create an array for the matrix
           MATRIX_APPS="["
@@ -100,7 +100,7 @@ jobs:
             # Skip empty entries
             [ -z "$app" ] && continue
             
-            # Check if this app changed
+            # Check if this app changed - dorny/paths-filter sets the app name to true/false in outputs
             IS_CHANGED=$(echo "$CHANGES" | jq -r ".$app // \"false\"")
             if [ "$IS_CHANGED" == "true" ]; then
               # Add to matrix apps array

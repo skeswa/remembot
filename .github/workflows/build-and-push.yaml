@@ -40,22 +40,26 @@ jobs:
           # Get all apps
           APPS="${{ steps.find-apps.outputs.apps }}"
           
-          # Start building the filter configuration
-          FILTERS="{"
+          # Create a JSON object for filters
+          echo "{" > filters.json
           
           # Add filter for each app
           for app in $APPS; do
             # Skip empty entries
             [ -z "$app" ] && continue
             
-            FILTERS+="\"$app\": [\"apps/$app/**\", \"packages/**\"],"
+            echo "  \"$app\": [\"apps/$app/**\", \"packages/**\"]," >> filters.json
           done
           
           # Remove trailing comma and close the JSON object
-          FILTERS="${FILTERS%,}}"
+          sed -i '$ s/,$//' filters.json
+          echo "}" >> filters.json
           
-          echo "filters=$FILTERS" >> $GITHUB_OUTPUT
-          echo "Generated filters: $FILTERS"
+          # Store the JSON as a GitHub output
+          FILTERS_JSON=$(cat filters.json)
+          echo "filters<<EOF" >> $GITHUB_OUTPUT
+          echo "$FILTERS_JSON" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
 
       - name: Detect changes per app
         uses: dorny/paths-filter@v2

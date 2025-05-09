@@ -56,7 +56,7 @@ jobs:
             # app_name:
             #   - 'apps/app_name/**'
             #   - 'packages/**'
-            FILTERS_YAML+=$(printf "\n%s:\n  - 'apps/%s/**'\n  - 'packages/**'\n" "$app" "$app")
+            FILTERS_YAML+=$(printf "%s:\n  - 'apps/%s/**'\n  - 'packages/**'\n\n" "$app" "$app")
           done
           
           # Output the generated YAML string to GITHUB_OUTPUT using heredoc syntax

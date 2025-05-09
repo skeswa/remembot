@@ -64,7 +64,7 @@ export default function Home() {
           </a>
         </div>
         <Button appName="web" className={styles.secondary}>
-          Open alert
+          Open alert!!
         </Button>
       </main>
       <footer className={styles.footer}>

@@ -75,7 +75,6 @@ jobs:
           else
             echo "[EMPTY_STRING] (No apps found or APPS variable was empty)"
           fi
-          echo "--- End of Generated YAML filters ---"
 
       - name: Detect changes per app
         uses: dorny/paths-filter@v2
@@ -83,7 +82,7 @@ jobs:
         with:
           filters: ${{ steps.dynamic-filters.outputs.filters }}
 
-      - name: Create app matrix with port mapping
+      - name: Create app matrix
         id: set-matrix
         run: |
           # Get all apps
@@ -96,12 +95,6 @@ jobs:
           MATRIX_APPS="["
           MATRIX_INCLUDE="["
           
-          # Default port mapping (can be expanded or moved to a config file)
-          declare -A PORT_MAP
-          PORT_MAP["api"]="3001"
-          PORT_MAP["web"]="3000"
-          PORT_MAP["courier"]="3002"
-          
           # Add each changed app to the matrix
           for app in $APPS; do
             # Skip empty entries
@@ -113,11 +106,8 @@ jobs:
               # Add to matrix apps array
               MATRIX_APPS+="\"$app\","
               
-              # Get port (default to 3000 if not specified)
-              PORT="${PORT_MAP[$app]:-3000}"
-              
-              # Add to include array with port
-              MATRIX_INCLUDE+="{\"app\":\"$app\",\"port\":\"$PORT\"},"
+              # Add to include array
+              MATRIX_INCLUDE+="{\"app\":\"$app\"},"
             fi
           done
           
@@ -155,6 +145,13 @@ jobs:
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Extract version from package.json
+        id: package-version
+        run: |
+          VERSION=$(node -p "require('./apps/${{ matrix.app }}/package.json').version")
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Extracted version: $VERSION from apps/${{ matrix.app }}/package.json"
+
       - name: Extract metadata
         id: meta
         uses: docker/metadata-action@v5
@@ -164,6 +161,7 @@ jobs:
             type=sha,format=short
             type=raw,value=latest
             type=raw,value={{date 'YYYYMMDD-HHmmss'}}
+            type=raw,value=${{ steps.package-version.outputs.version }}
 
       - name: Build and push
         uses: docker/build-push-action@v5
@@ -179,12 +177,14 @@ jobs:
       - name: Update image tag in k8s manifest
         run: |
           COMMIT_SHA=$(echo ${{ github.sha }} | cut -c1-7)
-          sed -i "s|\${REGISTRY}/remembot/${{ matrix.app }}:.*|\${REGISTRY}/remembot/${{ matrix.app }}:$COMMIT_SHA|g" apps/${{ matrix.app }}/k8s/deployment.yaml
+          VERSION="${{ steps.package-version.outputs.version }}"
+          sed -i "s|\${REGISTRY}/remembot/${{ matrix.app }}:.*|\${REGISTRY}/remembot/${{ matrix.app }}:$VERSION|g" apps/${{ matrix.app }}/k8s/deployment.yaml
+          echo "Updated K8s manifest to use version: $VERSION"
 
       - name: Commit and push k8s manifests
         run: |
           git config --global user.name "GitHub Actions"
           git config --global user.email "actions@github.com"
           git add apps/${{ matrix.app }}/k8s/deployment.yaml
-          git commit -m "chore: update ${{ matrix.app }} image to latest commit" || echo "No changes to commit"
+          git commit -m "chore: update ${{ matrix.app }} image to version ${{ steps.package-version.outputs.version }}" || echo "No changes to commit"
           git push 

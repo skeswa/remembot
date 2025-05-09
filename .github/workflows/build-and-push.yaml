@@ -20,9 +20,17 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
+      project_name: ${{ steps.project-name.outputs.name }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Extract project name
+        id: project-name
+        run: |
+          PROJECT_NAME=$(node -p "require('./package.json').name")
+          echo "name=$PROJECT_NAME" >> $GITHUB_OUTPUT
+          echo "Project name: $PROJECT_NAME"
 
       - name: Find all apps
         id: find-apps
@@ -156,7 +164,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.REGISTRY }}/${{ env.OWNER }}/remembot/${{ matrix.app }}
+          images: ${{ env.REGISTRY }}/${{ env.OWNER }}/${{ needs.detect-changes.outputs.project_name }}/${{ matrix.app }}
           tags: |
             type=sha,format=short
             type=raw,value=latest
@@ -178,7 +186,8 @@ jobs:
         run: |
           COMMIT_SHA=$(echo ${{ github.sha }} | cut -c1-7)
           VERSION="${{ steps.package-version.outputs.version }}"
-          sed -i "s|\${REGISTRY}/remembot/${{ matrix.app }}:.*|\${REGISTRY}/remembot/${{ matrix.app }}:$VERSION|g" apps/${{ matrix.app }}/k8s/deployment.yaml
+          PROJECT_NAME="${{ needs.detect-changes.outputs.project_name }}"
+          sed -i "s|\${REGISTRY}/$PROJECT_NAME/${{ matrix.app }}:.*|\${REGISTRY}/$PROJECT_NAME/${{ matrix.app }}:$VERSION|g" apps/${{ matrix.app }}/k8s/deployment.yaml
           echo "Updated K8s manifest to use version: $VERSION"
 
       - name: Commit and push k8s manifests

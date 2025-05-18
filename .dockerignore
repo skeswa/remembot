@@ -8,6 +8,7 @@ node_modules
 **/.cache
 **/.env*
 !**/.env.example
+*.bun-build
 
 # Misc
 .DS_Store

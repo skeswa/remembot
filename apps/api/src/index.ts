@@ -1,10 +1,13 @@
 const PORT = process.env.PORT;
 
 if (!process.env.PORT) {
-  console.error(
-    "Error: PORT environment variable is require " +
-      "(make sure you have a .env file)"
-  );
+  console.error("Error: PORT environment variable is required!");
+
+  if (process.env.NODE_ENV !== "production") {
+    console.log("psst: make sure you have a .env file");
+
+    process.exit(1);
+  }
 
   process.exit(1);
 }

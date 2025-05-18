@@ -1,16 +1,14 @@
-FROM oven/bun:1.2.11 as base
+FROM oven/bun:1.2.11-alpine as base
 
 # BUILD STAGE
 FROM base AS builder
 WORKDIR /app
-RUN apt-get update && apt-get install -y curl
-RUN curl -fsSL https://turbo.build/install.sh | sh
 
 # Copy entire monorepo for pruning
 COPY . .
 
-# Prune the api app and its dependencies
-RUN turbo prune api --docker
+# Prune the app and its dependencies
+RUN bunx turbo prune api --docker
 
 # INSTALL STAGE
 FROM base AS installer
@@ -40,6 +38,9 @@ USER bunuser
 # Copy compiled executable
 COPY --from=installer --chown=bunuser:nodejs /app/apps/api/dist/api ./
 
-EXPOSE 3001
+ENV PORT=3000
+ENV NODE_ENV=production
 
-CMD ["./api"] 
+EXPOSE 3000
+
+CMD ["./api"]

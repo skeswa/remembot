@@ -1,16 +1,14 @@
-FROM oven/bun:1.2.11 as base
+FROM oven/bun:1.2.11-alpine as base
 
 # BUILD STAGE
 FROM base AS builder
 WORKDIR /app
-RUN apt-get update && apt-get install -y curl
-RUN curl -fsSL https://turbo.build/install.sh | sh
 
 # Copy entire monorepo for pruning
 COPY . .
 
-# Prune the courier app and its dependencies
-RUN turbo prune courier --docker
+# Prune the app and its dependencies
+RUN bunx turbo prune courier --docker
 
 # INSTALL STAGE
 FROM base AS installer
@@ -29,7 +27,7 @@ COPY --from=builder /app/out/full/ .
 RUN bun run turbo run build --filter=courier...
 
 # RUNNER STAGE
-FROM base AS runner
+FROM base
 WORKDIR /app
 
 # Don't run production as root
@@ -40,6 +38,6 @@ USER bunuser
 # Copy compiled executable
 COPY --from=installer --chown=bunuser:nodejs /app/apps/courier/dist/courier ./
 
-EXPOSE 3002
+ENV NODE_ENV=production
 
 CMD ["./courier"] 

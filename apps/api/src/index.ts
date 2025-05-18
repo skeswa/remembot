@@ -1,4 +1,13 @@
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT;
+
+if (!process.env.PORT) {
+  console.error(
+    "Error: PORT environment variable is require " +
+      "(make sure you have a .env file)"
+  );
+
+  process.exit(1);
+}
 
 const server = Bun.serve({
   port: PORT,

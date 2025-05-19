@@ -1,5 +1,11 @@
 # courier
 
+## 0.1.2
+
+### Patch Changes
+
+- 080755f: Updated deployment scheme
+
 ## 0.1.1
 
 ### Patch Changes

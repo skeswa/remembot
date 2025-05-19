@@ -139,6 +139,9 @@ jobs:
     steps:
       - name: Checkout Repo
         uses: actions/checkout@v4
+        with:
+          # Fetch all history. This is crucial for git pull --rebase to work reliably.
+          fetch-depth: 0
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -179,7 +182,7 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      - name: Update image tag in k8s manifest
+      - name: Update image tag in k8s manifest and commit changes
         run: |
           # Set the base image name directly from the known pattern
           BASE_IMAGE="ghcr.io/${{ github.repository_owner }}/${{ needs.pre-publish.outputs.project_name }}-${{ matrix.app }}"
@@ -202,10 +205,29 @@ jobs:
           # Replace the original file with the new content
           mv "$TMP_FILE" "apps/${{ matrix.app }}/k8s/deployment.yaml"
 
-          echo "Updated ${{ matrix.app }} k8s deployment to use image: ${BASE_IMAGE}:${VERSION}"
-
           git config --global user.name "GitHub Actions"
           git config --global user.email "actions@github.com"
           git add apps/${{ matrix.app }}/k8s/deployment.yaml
           git commit -m "chore: update ${{ matrix.app }} image to version ${{ steps.package-version.outputs.version }}" || echo "No changes to commit"
-          git push
+
+          echo "Updated ${{ matrix.app }} k8s deployment to use image: ${BASE_IMAGE}:${VERSION}"
+
+      - name: Push k8s changes
+        run: |
+          # Get the current branch name (e.g., main, develop)
+          BRANCH_NAME="${{ github.ref_name }}"
+
+          echo "Attempting to pull with rebase from origin/${BRANCH_NAME}..."
+          # Pull latest changes from remote and rebase local commits on top
+          # Loop to retry a few times in case of very fast concurrent updates
+          for i in 1 2 3; do
+            echo "Pull/Push attempt $i for branch ${BRANCH_NAME}"
+            if git pull --rebase origin "${BRANCH_NAME}" && git push origin "${BRANCH_NAME}"; then
+              echo "Push successful on attempt $i."
+              exit 0
+            fi
+            echo "Pull/Push attempt $i failed. Retrying in 10 seconds..."
+            sleep 10
+          done
+          echo "Failed to push changes after multiple retries."
+          exit 1

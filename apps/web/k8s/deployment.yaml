@@ -36,7 +36,7 @@ spec:
             - name: HOSTNAME
               value: "0.0.0.0"
             - name: PORT
-              value: 3000
+              value: "3000"
           readinessProbe:
             httpGet:
               path: /

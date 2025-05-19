@@ -16,6 +16,6 @@ spec:
                 port:
                   number: 3000
   tls:
-  - hosts:
-    - api.remem.bot
-    secretName: api-cert
+    - hosts:
+        - api.remem.bot
+      secretName: api-cert

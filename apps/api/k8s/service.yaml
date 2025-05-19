@@ -9,7 +9,7 @@ spec:
   selector:
     app: api
   ports:
-  - port: 3001
-    targetPort: 3001
-    name: http
-  type: ClusterIP 
+    - port: 3000
+      targetPort: 3000
+      name: http
+  type: ClusterIP

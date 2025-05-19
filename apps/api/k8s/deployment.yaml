@@ -17,30 +17,30 @@ spec:
       namespace: remembot
     spec:
       containers:
-      - name: api
-        image: ghcr.io/skeswa/remembot-api:0.1.2
-        ports:
-        - containerPort: 3000
-        resources:
-          limits:
-            cpu: "0.5"
-            memory: "256Mi"
-          requests:
-            cpu: "0.1"
-            memory: "128Mi"
-        env:
-        - name: NODE_ENV
-          value: production
-        - name: PORT
-          value: "3000"
-        readinessProbe:
-          httpGet:
-            path: /health
-            port: 3000
-          initialDelaySeconds: 5
-          periodSeconds: 10
-        livenessProbe:
-          httpGet:
-            path: /health
-            port: 3000
-          initialDelaySeconds: 15
+        - name: api
+          image: ghcr.io/skeswa/remembot-api:0.1.2
+          ports:
+            - containerPort: 3000
+          resources:
+            limits:
+              cpu: "0.5"
+              memory: "256Mi"
+            requests:
+              cpu: "0.1"
+              memory: "128Mi"
+          env:
+            - name: NODE_ENV
+              value: production
+            - name: PORT
+              value: "3000"
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 3000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 3000
+            initialDelaySeconds: 15

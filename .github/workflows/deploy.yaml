@@ -68,7 +68,7 @@ jobs:
       - name: Validate kubeconfig secret exists
         id: validate-kubeconfig-secret
         run: |
-          SECRET_NAME="${TARGET}_KUBECONFIG"
+          SECRET_NAME="${{ steps.target.outputs.target }}_KUBECONFIG"
           KUBECONFIG="${{ secrets[format('{0}_KUBECONFIG', steps.target.outputs.target)] }}"
           if [ -z "$KUBECONFIG" ]; then
             echo "::error::Required secret '$SECRET_NAME' is not set. Please add this secret to the repository."

@@ -1,5 +1,11 @@
 # courier
 
+## 0.2.0
+
+### Minor Changes
+
+- 1227b19: Finalized build and deployment scheme via GitHub Actions
+
 ## 0.1.3
 
 ### Patch Changes

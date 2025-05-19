@@ -15,7 +15,18 @@ spec:
                 name: web
                 port:
                   number: 3000
+    - host: "www.remem.bot"
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: web
+                port:
+                  number: 3000
   tls:
     - hosts:
         - remem.bot
+        - www.remem.bot
       secretName: web-cert

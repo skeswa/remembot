@@ -61,7 +61,7 @@ jobs:
       - name: Read deployment target
         id: target
         run: |
-          TARGET=$(cat apps/${{ matrix.app }}/k8s/target.yaml | tr -d '[:space:]')
+          TARGET=$(cat apps/${{ matrix.app }}/k8s/target.yaml | tr -d '[:space:]' | tr '[:lower:]' '[:upper:]')
           echo "target=$TARGET" >> $GITHUB_OUTPUT
           echo "Using deployment target: $TARGET"
 

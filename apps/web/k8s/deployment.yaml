@@ -18,7 +18,7 @@ spec:
     spec:
       containers:
         - name: web
-          image: ghcr.io/skeswa/remembot-web:latest
+          image: ghcr.io/skeswa/remembot-web:0.1.2
           ports:
             - containerPort: 3000
           resources:

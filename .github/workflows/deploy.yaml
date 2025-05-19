@@ -84,13 +84,45 @@ jobs:
           echo "${{ steps.validate-kubeconfig-secret.outputs.kubeconfig }}" > $HOME/.kube/config
           chmod 600 $HOME/.kube/config
 
-      - name: Deploy ${{ matrix.app }}
+      - name: Applying ${{ matrix.app }} k8s configuration
         run: |
-          echo "Deploying ${{ matrix.app }}..."
+          echo "Applying ${{ matrix.app }} k8s configuration..."
+          APP_K8S_PATH="apps/${{ matrix.app }}/k8s"
 
-          # Apply all Kubernetes manifests (except target.yaml) for this app
-          for file in $(find apps/${{ matrix.app }}/k8s -type f -name "*.yaml" ! -name "target.yaml"); do
-            kubectl apply -f "$file"
+          # Define the specific order of files
+          ORDERED_FILES=(
+            "namespace.yaml"
+            "deployment.yaml"
+            "service.yaml"
+            "certificate.yaml"
+            "ingress.yaml"
+          )
+
+          # Apply files in the specified order
+          for FILE_NAME in "${ORDERED_FILES[@]}"; do
+            FILE_PATH="$APP_K8S_PATH/$FILE_NAME"
+            if [ -f "$FILE_PATH" ]; then
+              echo "Applying (ordered) $FILE_PATH..."
+              kubectl apply -f "$FILE_PATH"
+            fi
+          done
+
+          # Apply all other Kubernetes manifests (except target.yaml and already applied files)
+          echo "Applying remaining YAML files..."
+          for file in $(find "$APP_K8S_PATH" -type f -name "*.yaml" ! -name "target.yaml"); do
+            # Check if the file is one of the ordered files (already applied or handled)
+            IS_ORDERED_FILE=false
+            for ORDERED_FILE_NAME in "${ORDERED_FILES[@]}"; do
+              if [ "$(basename "$file")" == "$ORDERED_FILE_NAME" ]; then
+                IS_ORDERED_FILE=true
+                break
+              fi
+            done
+
+            if [ "$IS_ORDERED_FILE" == "false" ]; then
+              echo "Applying (remaining) $file..."
+              kubectl apply -f "$file"
+            fi
           done
 
           echo "${{ matrix.app }} deployed successfully"

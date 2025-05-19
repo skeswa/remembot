@@ -29,8 +29,8 @@ spec:
               cpu: "0.2"
               memory: "256Mi"
           env:
-            - name: API_AUTHORITY
-              value: http://api.remembot.svc.cluster.local:3001
+            - name: API_BASE_URL
+              value: http://api.remembot.svc.cluster.local:3000
             - name: NODE_ENV
               value: production
             - name: HOSTNAME

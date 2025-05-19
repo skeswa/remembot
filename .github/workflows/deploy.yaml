@@ -77,7 +77,7 @@ jobs:
 
           # Apply all Kubernetes manifests (except target.yaml) for this app
           for file in $(find apps/${{ matrix.app }}/k8s -type f -name "*.yaml" ! -name "target.yaml"); do
-            kubectl apply -f "$file" --ignore-not-found=true
+            kubectl apply -f "$file"
           done
 
           echo "${{ matrix.app }} deployed successfully"

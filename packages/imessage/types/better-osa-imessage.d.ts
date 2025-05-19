@@ -65,7 +65,7 @@ declare module 'better-osa-imessage' {
    * @param limit - Amount of recent chats to return. Defaults to 10.
    * @returns A promise that resolves with an array of recent chats (structure not fully defined in docs).
    */
-  export function getRecentChats(limit?: number): Promise<any[]>; // Structure unclear from docs
+  export function getRecentChats(limit?: number): Promise<unknown[]>; // Structure unclear from docs
 
   // Helper type for EventEmitter with typed events
   interface TypedEventEmitter<T> extends EventEmitter {

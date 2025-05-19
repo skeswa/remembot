@@ -62,7 +62,7 @@ const server = Bun.serve({
     return new Response("Page not found", { status: 404 });
   },
   websocket: {
-    open: (_) => {
+    open: () => {
       console.log("Client connected");
     },
     // this is called when a message is received
@@ -71,7 +71,7 @@ const server = Bun.serve({
       // send back a message
       ws.send(`You said: ${message}`);
     },
-    close: (_) => {
+    close: () => {
       console.log("Client disconnected");
     },
   },

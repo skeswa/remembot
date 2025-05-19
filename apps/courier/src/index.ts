@@ -18,7 +18,6 @@ async function main() {
 
   let currentBackoff = INITIAL_BACKOFF_MS;
 
-  // eslint-disable-next-line no-constant-condition
   while (true) {
     try {
       console.log("Attempting to connect to WebSocket server...");

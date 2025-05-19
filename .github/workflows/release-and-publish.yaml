@@ -161,7 +161,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.REGISTRY }}/${{ env.OWNER }}/${{ needs.pre-publish.outputs.project_name }}-${{ matrix.app }}
+          images: ghcr.io/${{ github.repository_owner }}/${{ needs.pre-publish.outputs.project_name }}-${{ matrix.app }}
           tags: |
             type=sha,format=short
             type=raw,value=latest

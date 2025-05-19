@@ -65,10 +65,23 @@ jobs:
           echo "target=$TARGET" >> $GITHUB_OUTPUT
           echo "Using deployment target: $TARGET"
 
+      - name: Validate kubeconfig secret exists
+        id: validate-kubeconfig-secret
+        run: |
+          SECRET_NAME="${TARGET}_KUBECONFIG"
+          KUBECONFIG="${{ secrets[format('{0}_KUBECONFIG', steps.target.outputs.target)] }}"
+          if [ -z "$KUBECONFIG" ]; then
+            echo "::error::Required secret '$SECRET_NAME' is not set. Please add this secret to the repository."
+            exit 1
+          fi
+          echo "kubeconfig<<EOF" >> $GITHUB_OUTPUT
+          echo "$KUBECONFIG" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
       - name: Setup k8s configuration
         run: |
           mkdir -p $HOME/.kube
-          echo "${{ secrets[format('{0}_KUBECONFIG', steps.target.outputs.target)] }}" > $HOME/.kube/config
+          echo "${{ steps.validate-kubeconfig-secret.outputs.kubeconfig }}" > $HOME/.kube/config
           chmod 600 $HOME/.kube/config
 
       - name: Deploy ${{ matrix.app }}

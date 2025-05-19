@@ -1,5 +1,11 @@
 # api
 
+## 0.1.3
+
+### Patch Changes
+
+- 5cb7e37: Implemented health checks
+
 ## 0.1.2
 
 ### Patch Changes

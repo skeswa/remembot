@@ -9,9 +9,8 @@ on:
     paths:
       - "apps/*/k8s/**"
 
-env:
-  REGISTRY: ghcr.io
-  OWNER: ${{ github.repository_owner }}
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
 
 jobs:
   # Prepare to deploy apps from the monorepo:
@@ -102,18 +101,11 @@ jobs:
           echo "target=$TARGET" >> $GITHUB_OUTPUT
           echo "Using deployment target: $TARGET"
 
-      - name: Setup k3s configuration
+      - name: Setup k8s configuration
         run: |
           mkdir -p $HOME/.kube
           echo "${{ secrets[format('{0}_KUBECONFIG', steps.target.outputs.target)] }}" > $HOME/.kube/config
           chmod 600 $HOME/.kube/config
-
-      - name: Login to GitHub Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.repository_owner }}
-          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Deploy ${{ matrix.app }}
         run: |

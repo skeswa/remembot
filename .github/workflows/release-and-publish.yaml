@@ -1,0 +1,179 @@
+name: Release & Publish
+
+on:
+  # Triggers the workflow on push or pull request events but only for the main branch
+  push:
+    branches:
+      - main
+  
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+concurrency: ${{ github.workflow }}-${{ github.ref }}
+
+jobs:
+  # Create a release pull request or passthrough to publish
+  release:
+    name: Release
+    runs-on: ubuntu-latest
+    outputs:
+      should_publish: ${{ steps.changesets.outputs.hasChangesets == 'false' }}
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v4
+
+      - name: Create Release Pull Request or passthrough to publish
+        id: changesets
+        uses: changesets/action@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # Prepare to publish apps from the monorepo:
+  # - Find all apps with changed versions, and send them off to be published
+  # - Determine the name of the project
+  pre-publish:
+    name: Pre-publish
+    needs: release
+    if: needs.release.outputs.should_publish == 'true'
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+      project_name: ${{ steps.project-name.outputs.name }}
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v4
+
+      - name: Extract project name
+        id: project-name
+        run: |
+          PROJECT_NAME=$(node -p "require('./package.json').name")
+          echo "name=$PROJECT_NAME" >> $GITHUB_OUTPUT
+          echo "Project name: $PROJECT_NAME"
+
+      - name: Find all apps
+        id: find-apps
+        run: |
+          # Find all directories in the apps directory
+          APPS=$(find apps -maxdepth 1 -mindepth 1 -type d -exec basename {} \; | sort)
+          echo "Found apps: $APPS"
+          echo "apps<<EOF" >> $GITHUB_OUTPUT
+          echo "$APPS" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Compare versions and create matrix
+        id: set-matrix
+        run: |
+          # Get all apps
+          APPS="${{ steps.find-apps.outputs.apps }}"
+
+          # Create arrays for the matrix
+          MATRIX_APPS="["
+          MATRIX_INCLUDE="["
+
+          # Process each app
+          for app in $APPS; do
+            # Skip empty entries
+            [ -z "$app" ] && continue
+            
+            # Extract package version
+            PACKAGE_VERSION=$(node -p "require('./apps/$app/package.json').version")
+            
+            # Extract k8s deployment version using grep and sed
+            K8S_VERSION=$(grep -o "image:.*:.*" "apps/$app/k8s/deployment.yaml" | sed -n "s/.*:\(.*\)/\1/p")
+            
+            echo "App: $app"
+            echo "Package version: $PACKAGE_VERSION"
+            echo "K8s version: $K8S_VERSION"
+            
+            # Compare versions and add to matrix if they differ
+            if [ "$PACKAGE_VERSION" != "$K8S_VERSION" ]; then
+              echo "Versions differ for $app - adding to matrix"
+              MATRIX_APPS+="\"$app\","
+              MATRIX_INCLUDE+="{\"app\":\"$app\"},"
+            else
+              echo "Versions match for $app - skipping"
+            fi
+          done
+
+          # Remove trailing comma and close arrays
+          MATRIX_APPS="${MATRIX_APPS%,}]"
+          MATRIX_INCLUDE="${MATRIX_INCLUDE%,}]"
+
+          # Create the final matrix JSON
+          MATRIX="{\"app\":$MATRIX_APPS,\"include\":$MATRIX_INCLUDE}"
+
+          echo "matrix=$MATRIX" >> $GITHUB_OUTPUT
+          echo "Generated matrix: $MATRIX"
+
+  # Publish apps from the monorepo:
+  # - Build and push the app to the container registry
+  # - Update the k8s deployment to use the new version
+  # - Commit and push the changes to the repository
+  publish:
+    name: Publish
+    needs: pre-publish
+    if: ${{ fromJson(needs.pre-publish.outputs.matrix).app[0] != null }}
+    strategy:
+      matrix: ${{ fromJson(needs.pre-publish.outputs.matrix) }}
+      fail-fast: false
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract package version
+        id: package-version
+        run: |
+          VERSION=$(node -p "require('./apps/${{ matrix.app }}/package.json').version")
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Extracted version: $VERSION from apps/${{ matrix.app }}/package.json"
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.OWNER }}/${{ needs.pre-publish.outputs.project_name }}/${{ matrix.app }}
+          tags: |
+            type=sha,format=short
+            type=raw,value=latest
+            type=raw,value={{date 'YYYYMMDD-HHmmss'}}
+            type=raw,value=${{ steps.package-version.outputs.version }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./apps/${{ matrix.app }}/Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Update image tag in k8s manifest
+        run: |
+          COMMIT_SHA=$(echo ${{ github.sha }} | cut -c1-7)
+          VERSION="${{ steps.package-version.outputs.version }}"
+          PROJECT_NAME="${{ needs.pre-publish.outputs.project_name }}"
+
+          sed -i "s|\${REGISTRY}/$PROJECT_NAME/${{ matrix.app }}:.*|\${REGISTRY}/$PROJECT_NAME/${{ matrix.app }}:$VERSION|g" apps/${{ matrix.app }}/k8s/deployment.yaml
+          echo "Updated ${{ matrix.app }} k8s deployment to use version: $VERSION"
+
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
+          git add apps/${{ matrix.app }}/k8s/deployment.yaml
+          git commit -m "chore: update ${{ matrix.app }} image to version ${{ steps.package-version.outputs.version }}" || echo "No changes to commit"
+          git push

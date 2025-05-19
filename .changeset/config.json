@@ -3,11 +3,8 @@
   "changelog": "@changesets/cli/changelog",
   "commit": true,
   "fixed": [],
-  "linked": [
-    ["apps/*"]
-  ],
+  "linked": [],
   "access": "restricted",
   "baseBranch": "main",
-  "updateInternalDependencies": "patch",
-  "ignore": ["docs"]
+  "updateInternalDependencies": "patch"
 }

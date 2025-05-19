@@ -1,0 +1,118 @@
+name: Deploy
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'apps/*/k8s/**'
+
+env:
+  REGISTRY: ghcr.io
+  OWNER: ${{ github.repository_owner }}
+
+jobs:
+  pre-deploy:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v4
+
+      - name: Generate path filters
+        id: generate-filters
+        run: |
+          # Find all apps with k8s directories
+          APPS=$(find apps -maxdepth 2 -type d -name k8s | sed 's|apps/||g' | sed 's|/k8s||g')
+          
+          # Generate filters YAML
+          FILTERS=""
+          for APP in $APPS; do
+            FILTERS+="$APP:\n  - 'apps/$APP/k8s/**'\n"
+          done
+          
+          # Save filters to a file
+          echo -e "$FILTERS" > filters.yml
+          
+          # Output the filters for the next step
+          echo "filters<<EOF" >> $GITHUB_OUTPUT
+          echo -e "$FILTERS" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Check for k8s changes
+        uses: dorny/paths-filter@v3
+        id: changes
+        with:
+          filters: ${{ steps.generate-filters.outputs.filters }}
+
+      - name: Set matrix
+        id: set-matrix
+        run: |
+          # Create an array of apps that have changes
+          CHANGED_APPS=()
+          
+          # Get list of all apps
+          APPS=$(find apps -maxdepth 2 -type d -name k8s | sed 's|apps/||g' | sed 's|/k8s||g')
+          
+          # Check each app for changes
+          for APP in $APPS; do
+            if [[ "${{ steps.changes.outputs[APP] }}" == "true" ]]; then
+              CHANGED_APPS+=("$APP")
+            fi
+          done
+          
+          # Create a matrix object
+          MATRIX_JSON=$(echo '{"app": '"$(echo "${CHANGED_APPS[@]}" | jq -R -s -c 'split(" ") | map(select(length > 0))')"'}')
+          
+          echo "matrix=$MATRIX_JSON" >> $GITHUB_OUTPUT
+          echo "Matrix: $MATRIX_JSON"
+
+  deploy:
+    needs: pre-deploy
+    # Only run this job if there are apps to deploy
+    if: ${{ fromJson(needs.pre-deploy.outputs.matrix).app[0] != null }}
+    runs-on: ubuntu-latest
+    strategy:
+      matrix: ${{ fromJson(needs.pre-deploy.outputs.matrix) }}
+      fail-fast: false
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: 'latest'
+
+      - name: Read deployment target
+        id: target
+        run: |
+          TARGET=$(cat apps/${{ matrix.app }}/k8s/target.yaml | tr -d '[:space:]')
+          echo "target=$TARGET" >> $GITHUB_OUTPUT
+          echo "Using deployment target: $TARGET"
+
+      - name: Setup k3s configuration
+        run: |
+          mkdir -p $HOME/.kube
+          echo "${{ secrets[format('{0}_KUBECONFIG', steps.target.outputs.target)] }}" > $HOME/.kube/config
+          chmod 600 $HOME/.kube/config
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Deploy ${{ matrix.app }}
+        run: |
+          echo "Deploying ${{ matrix.app }}..."
+          
+          # Apply all Kubernetes manifests for this app
+          kubectl apply -f apps/${{ matrix.app }}/k8s/
+          
+          # Restart the deployment
+          kubectl rollout restart deployment ${{ matrix.app }}
+          
+          echo "${{ matrix.app }} deployed successfully" 

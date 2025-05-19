@@ -17,6 +17,7 @@ jobs:
   # Prepare to deploy apps from the monorepo:
   # - Find all apps with changes ink8s directories
   pre-deploy:
+    name: Pre-deploy
     runs-on: ubuntu-latest
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
@@ -77,6 +78,7 @@ jobs:
   # - Read the deployment target
   # - Apply all Kubernetes manifests (except target.yaml) for this app
   deploy:
+    name: Deploy
     needs: pre-deploy
     # Only run this job if there are apps to deploy
     if: ${{ fromJson(needs.pre-deploy.outputs.matrix).app[0] != null }}

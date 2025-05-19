@@ -7,10 +7,6 @@
     "lint": "turbo run lint",
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
     "check-types": "turbo run check-types",
-    "changeset": "changeset",
-    "version": "changeset version",
-    "version-packages": "changeset version && bun install --force",
-    "release": "turbo run build && changeset publish",
     "postinstall": "find apps -name '.env.example' -exec sh -c 'dir=$(dirname \"{}\"); [ ! -f \"$dir/.env\" ] && cp \"{}\" \"$dir/.env\"' \\;"
   },
   "devDependencies": {

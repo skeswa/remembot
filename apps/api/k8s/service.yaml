@@ -4,6 +4,7 @@ metadata:
   name: api
   labels:
     app: api
+  namespace: remembot
 spec:
   selector:
     app: api

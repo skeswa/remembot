@@ -4,6 +4,7 @@ metadata:
   name: courier
   labels:
     app: courier
+  namespace: remembot
 spec:
   replicas: 2
   selector:
@@ -13,31 +14,36 @@ spec:
     metadata:
       labels:
         app: courier
+      namespace: remembot
     spec:
       containers:
-      - name: courier
-        image: ${REGISTRY}/remembot/courier:latest
-        ports:
-        - containerPort: 3002
-        resources:
-          limits:
-            cpu: "0.3"
-            memory: "256Mi"
-          requests:
-            cpu: "0.1"
-            memory: "128Mi"
-        env:
-        - name: NODE_ENV
-          value: production
-        readinessProbe:
-          httpGet:
-            path: /health
-            port: 3002
-          initialDelaySeconds: 5
-          periodSeconds: 10
-        livenessProbe:
-          httpGet:
-            path: /health
-            port: 3002
-          initialDelaySeconds: 15
-          periodSeconds: 20 
+        - name: courier
+          image: ghcr.io/skeswa/remembot-courier:latest
+          ports:
+            - containerPort: 3000
+          resources:
+            limits:
+              cpu: "0.3"
+              memory: "256Mi"
+            requests:
+              cpu: "0.1"
+              memory: "128Mi"
+          env:
+            - name: API_AUTHORITY
+              value: api.remem.bot
+            - name: NODE_ENV
+              value: production
+            - name: PORT
+              value: 3000
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 3000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 3000
+            initialDelaySeconds: 15
+            periodSeconds: 20

@@ -1,17 +1,21 @@
 name: Deploy
 
 on:
+  # Trigger the workflow on push or pull request events that affect k8s
+  # manifests
   push:
     branches:
       - main
     paths:
-      - 'apps/*/k8s/**'
+      - "apps/*/k8s/**"
 
 env:
   REGISTRY: ghcr.io
   OWNER: ${{ github.repository_owner }}
 
 jobs:
+  # Prepare to deploy apps from the monorepo:
+  # - Find all apps with changes ink8s directories
   pre-deploy:
     runs-on: ubuntu-latest
     outputs:
@@ -25,16 +29,16 @@ jobs:
         run: |
           # Find all apps with k8s directories
           APPS=$(find apps -maxdepth 2 -type d -name k8s | sed 's|apps/||g' | sed 's|/k8s||g')
-          
+
           # Generate filters YAML
           FILTERS=""
           for APP in $APPS; do
             FILTERS+="$APP:\n  - 'apps/$APP/k8s/**'\n"
           done
-          
+
           # Save filters to a file
           echo -e "$FILTERS" > filters.yml
-          
+
           # Output the filters for the next step
           echo "filters<<EOF" >> $GITHUB_OUTPUT
           echo -e "$FILTERS" >> $GITHUB_OUTPUT
@@ -51,23 +55,27 @@ jobs:
         run: |
           # Create an array of apps that have changes
           CHANGED_APPS=()
-          
+
           # Get list of all apps
           APPS=$(find apps -maxdepth 2 -type d -name k8s | sed 's|apps/||g' | sed 's|/k8s||g')
-          
+
           # Check each app for changes
           for APP in $APPS; do
             if [[ "${{ steps.changes.outputs[APP] }}" == "true" ]]; then
               CHANGED_APPS+=("$APP")
             fi
           done
-          
+
           # Create a matrix object
           MATRIX_JSON=$(echo '{"app": '"$(echo "${CHANGED_APPS[@]}" | jq -R -s -c 'split(" ") | map(select(length > 0))')"'}')
-          
+
           echo "matrix=$MATRIX_JSON" >> $GITHUB_OUTPUT
           echo "Matrix: $MATRIX_JSON"
 
+  # Deploy apps from the monorepo:
+  # - Set up kubectl
+  # - Read the deployment target
+  # - Apply all Kubernetes manifests (except target.yaml) for this app
   deploy:
     needs: pre-deploy
     # Only run this job if there are apps to deploy
@@ -83,7 +91,7 @@ jobs:
       - name: Set up kubectl
         uses: azure/setup-kubectl@v3
         with:
-          version: 'latest'
+          version: "latest"
 
       - name: Read deployment target
         id: target
@@ -108,11 +116,10 @@ jobs:
       - name: Deploy ${{ matrix.app }}
         run: |
           echo "Deploying ${{ matrix.app }}..."
-          
-          # Apply all Kubernetes manifests for this app
-          kubectl apply -f apps/${{ matrix.app }}/k8s/
-          
-          # Restart the deployment
-          kubectl rollout restart deployment ${{ matrix.app }}
-          
-          echo "${{ matrix.app }} deployed successfully" 
+
+          # Apply all Kubernetes manifests (except target.yaml) for this app
+          for file in $(find apps/${{ matrix.app }}/k8s -type f -name "*.yaml" ! -name "target.yaml"); do
+            kubectl apply -f "$file" --ignore-not-found=true
+          done
+
+          echo "${{ matrix.app }} deployed successfully"

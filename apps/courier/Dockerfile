@@ -38,6 +38,4 @@ USER bunuser
 # Copy compiled executable
 COPY --from=installer --chown=bunuser:nodejs /app/apps/courier/dist/courier ./
 
-ENV NODE_ENV=production
-
-CMD ["./courier"] 
+CMD ["./courier"]

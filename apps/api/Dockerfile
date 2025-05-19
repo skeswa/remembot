@@ -38,9 +38,4 @@ USER bunuser
 # Copy compiled executable
 COPY --from=installer --chown=bunuser:nodejs /app/apps/api/dist/api ./
 
-ENV PORT=3000
-ENV NODE_ENV=production
-
-EXPOSE 3000
-
 CMD ["./api"]

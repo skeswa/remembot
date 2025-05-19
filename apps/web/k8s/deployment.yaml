@@ -4,6 +4,7 @@ metadata:
   name: web
   labels:
     app: web
+  namespace: remembot
 spec:
   replicas: 2
   selector:
@@ -13,33 +14,38 @@ spec:
     metadata:
       labels:
         app: web
+      namespace: remembot
     spec:
       containers:
-      - name: web
-        image: ${REGISTRY}/remembot/web:latest
-        ports:
-        - containerPort: 3000
-        resources:
-          limits:
-            cpu: "0.5"
-            memory: "512Mi"
-          requests:
-            cpu: "0.2"
-            memory: "256Mi"
-        env:
-        - name: NODE_ENV
-          value: production
-        - name: API_URL
-          value: http://api:3001
-        readinessProbe:
-          httpGet:
-            path: /
-            port: 3000
-          initialDelaySeconds: 10
-          periodSeconds: 5
-        livenessProbe:
-          httpGet:
-            path: /
-            port: 3000
-          initialDelaySeconds: 20
-          periodSeconds: 15 
+        - name: web
+          image: ghcr.io/skeswa/remembot-web:latest
+          ports:
+            - containerPort: 3000
+          resources:
+            limits:
+              cpu: "0.5"
+              memory: "512Mi"
+            requests:
+              cpu: "0.2"
+              memory: "256Mi"
+          env:
+            - name: API_AUTHORITY
+              value: http://api.remembot.svc.cluster.local:3001
+            - name: NODE_ENV
+              value: production
+            - name: HOSTNAME
+              value: "0.0.0.0"
+            - name: PORT
+              value: 3000
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 3000
+            initialDelaySeconds: 10
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 3000
+            initialDelaySeconds: 20
+            periodSeconds: 15

@@ -49,10 +49,4 @@ COPY --from=installer --chown=nextjs:nodejs /app/apps/web/.next/static ./.next/s
 
 USER nextjs
 
-ENV HOSTNAME "0.0.0.0"
-ENV NODE_ENV=production
-ENV PORT 3000
-
-EXPOSE 3000
-
-CMD ["bun", "apps/web/server.js"] 
+CMD ["bun", "apps/web/server.js"]

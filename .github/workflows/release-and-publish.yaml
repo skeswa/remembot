@@ -1,11 +1,15 @@
 name: Release & Publish
 
 on:
-  # Triggers the workflow on push or pull request events but only for the main branch
+  # Trigger the workflow on push or pull request events that affect k8s
+  # manifests or package.json files
   push:
     branches:
       - main
-  
+    paths:
+      - "apps/*/k8s/**"
+      - "apps/*/package.json"
+
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
 
@@ -145,7 +149,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.REGISTRY }}/${{ env.OWNER }}/${{ needs.pre-publish.outputs.project_name }}/${{ matrix.app }}
+          images: ${{ env.REGISTRY }}/${{ env.OWNER }}/${{ needs.pre-publish.outputs.project_name }}-${{ matrix.app }}
           tags: |
             type=sha,format=short
             type=raw,value=latest
@@ -165,12 +169,30 @@ jobs:
 
       - name: Update image tag in k8s manifest
         run: |
-          COMMIT_SHA=$(echo ${{ github.sha }} | cut -c1-7)
+          # Get the full image name from metadata
+          IMAGE_NAME="${{ steps.meta.outputs.tags }}"
+          # Extract just the base image name without tags
+          BASE_IMAGE=$(echo "$IMAGE_NAME" | cut -d':' -f1)
           VERSION="${{ steps.package-version.outputs.version }}"
-          PROJECT_NAME="${{ needs.pre-publish.outputs.project_name }}"
 
-          sed -i "s|\${REGISTRY}/$PROJECT_NAME/${{ matrix.app }}:.*|\${REGISTRY}/$PROJECT_NAME/${{ matrix.app }}:$VERSION|g" apps/${{ matrix.app }}/k8s/deployment.yaml
-          echo "Updated ${{ matrix.app }} k8s deployment to use version: $VERSION"
+          # Create a temporary file for the new content
+          TMP_FILE=$(mktemp)
+
+          # Process the deployment file line by line
+          while IFS= read -r line; do
+            if [[ $line =~ ^[[:space:]]*image:[[:space:]]* ]]; then
+              # Preserve the original indentation
+              INDENT=$(echo "$line" | sed -E 's/^([[:space:]]*).*/\1/')
+              echo "${INDENT}image: ${BASE_IMAGE}:${VERSION}" >> "$TMP_FILE"
+            else
+              echo "$line" >> "$TMP_FILE"
+            fi
+          done < "apps/${{ matrix.app }}/k8s/deployment.yaml"
+
+          # Replace the original file with the new content
+          mv "$TMP_FILE" "apps/${{ matrix.app }}/k8s/deployment.yaml"
+
+          echo "Updated ${{ matrix.app }} k8s deployment to use image: ${BASE_IMAGE}:${VERSION}"
 
           git config --global user.name "GitHub Actions"
           git config --global user.email "actions@github.com"

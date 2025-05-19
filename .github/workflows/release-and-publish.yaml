@@ -26,6 +26,14 @@ jobs:
       - name: Checkout Repo
         uses: actions/checkout@v4
 
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: "1.2.11"
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
       - name: Create Release Pull Request or passthrough to publish
         id: changesets
         uses: changesets/action@v1
@@ -38,7 +46,7 @@ jobs:
   pre-publish:
     name: Pre-publish
     needs: release
-    if: needs.release.outputs.should_publish == 'true'
+    if: ${{ needs.release.outputs.should_publish == 'true' }}
     runs-on: ubuntu-latest
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}

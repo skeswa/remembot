@@ -1,84 +1,128 @@
-# Turborepo starter
+# Remembot
 
-This Turborepo starter is maintained by the Turborepo core team.
+Remembot is an innovative iMessage application that helps users manage their todos directly through iMessage. It provides a seamless experience for creating, updating, and tracking tasks without leaving your favorite messaging platform.
 
-## Using this example
+## Features
 
-Run the following command:
+- Create and manage todos through iMessage
+- Set due dates and reminders
+- Mark tasks as complete
+- View task lists and status
+- Natural language processing for task creation
 
-```sh
-npx create-turbo@latest
+## Documentation
+
+- [Architecture Overview](./docs/ARCHITECTURE.md)
+- [CI/CD Overview](./docs/ci-cd-workflow.md)
+- [API Documentation](./docs/API.md)
+- [Development Guide](./docs/DEVELOPMENT.md)
+- [Deployment Guide](./docs/DEPLOYMENT.md)
+
+## Setup Instructions
+
+### Prerequisites
+
+- Bun 1.0 or higher
+- Apple Developer Account (for iMessage integration)
+- GitHub account
+
+### Local Development Setup
+
+1. Clone the repository:
+
+```bash
+git clone https://github.com/skeswa/remembot.git
+cd remembot
 ```
 
-## What's inside?
+2. Install dependencies:
 
-This Turborepo includes the following packages/apps:
+```bash
+bun install
+```
 
-### Apps and Packages
+3. Set up environment variables:
 
-- `docs`: a [Next.js](https://nextjs.org/) app
-- `web`: another [Next.js](https://nextjs.org/) app
-- `@repo/ui`: a stub React component library shared by both `web` and `docs` applications
-- `@repo/eslint-config`: `eslint` configurations (includes `eslint-config-next` and `eslint-config-prettier`)
-- `@repo/typescript-config`: `tsconfig.json`s used throughout the monorepo
+```bash
+bun run postinstall
+```
 
-Each package/app is 100% [TypeScript](https://www.typescriptlang.org/).
+Edit `.env` with your configuration values.
 
-### Utilities
+4. Start the development server:
 
-This Turborepo has some additional tools already setup for you:
+```bash
+bun run dev
+```
 
+### Monorepo Structure
+
+This project uses Turborepo to manage the monorepo. The workspace is organized as follows:
+
+```
+remembot/
+├── apps/
+│   ├── api/          # Backend API
+│   ├── courier/      # iMessage client
+│   └── web/          # User-facing web application
+├── packages/         # Shared libraries and other packages
+└── docs/             # Documentation
+```
+
+### Repository Setup
+
+1. **GitHub Actions Permissions**
+
+   - Go to your repository settings
+   - Navigate to Actions > General
+   - Under "Workflow permissions":
+     - Select "Read and write permissions"
+     - Check "Allow GitHub Actions to create and approve pull requests"
+
+2. **Branch Protection**
+   - Go to Settings > Branches
+   - Add a rule for the `main` branch
+   - Enable required status checks
+   - Require pull request reviews before merging
+
+### Development Tools
+
+This project uses several tools to ensure code quality:
+
+- [Bun](https://bun.sh/) for package management and running scripts
 - [TypeScript](https://www.typescriptlang.org/) for static type checking
 - [ESLint](https://eslint.org/) for code linting
 - [Prettier](https://prettier.io) for code formatting
+- [Jest](https://jestjs.io/) for testing
+- [Turborepo](https://turbo.build/repo) for monorepo management
+- [Changesets](https://github.com/changesets/changesets) for versioning and changelog management
 
-### Build
+For detailed information about our CI/CD pipeline and release process, please refer to our [CI/CD Overview](./docs/ci-cd-workflow.md).
 
-To build all apps and packages, run the following command:
+### Available Scripts
 
-```
-cd my-turborepo
-pnpm build
-```
+- `bun dev` - Start development servers for all apps
+- `bun build` - Build all packages and apps
+- `bun test` - Run tests for all packages and apps
+- `bun lint` - Run linting for all packages and apps
+- `bun format` - Format code
 
-### Develop
+### Turborepo Commands
 
-To develop all apps and packages, run the following command:
+```bash
+# Run specific workspace
+bun dev --filter=api
+bun dev --filter=imessage
 
-```
-cd my-turborepo
-pnpm dev
-```
-
-### Remote Caching
-
-> [!TIP]
-> Vercel Remote Cache is free for all plans. Get started today at [vercel.com](https://vercel.com/signup?/signup?utm_source=remote-cache-sdk&utm_campaign=free_remote_cache).
-
-Turborepo can use a technique known as [Remote Caching](https://turborepo.com/docs/core-concepts/remote-caching) to share cache artifacts across machines, enabling you to share build caches with your team and CI/CD pipelines.
-
-By default, Turborepo will cache locally. To enable Remote Caching you will need an account with Vercel. If you don't have an account you can [create one](https://vercel.com/signup?utm_source=turborepo-examples), then enter the following commands:
-
-```
-cd my-turborepo
-npx turbo login
+# Run command in specific workspace
+bun test --filter=api
+bun build --filter=imessage
 ```
 
-This will authenticate the Turborepo CLI with your [Vercel account](https://vercel.com/docs/concepts/personal-accounts/overview).
+## Contributing
 
-Next, you can link your Turborepo to your Remote Cache by running the following command from the root of your Turborepo:
+Please read our [Contributing Guide](./CONTRIBUTING.md) for details on our code of conduct and the process for submitting pull requests.
 
-```
-npx turbo link
-```
+## License
 
-## Useful Links
-
-Learn more about the power of Turborepo:
-
-- [Tasks](https://turborepo.com/docs/crafting-your-repository/running-tasks)
-- [Caching](https://turborepo.com/docs/crafting-your-repository/caching)
-- [Remote Caching](https://turborepo.com/docs/core-concepts/remote-caching)
-- [Filtering](https://turborepo.com/docs/crafting-your-repository/running-tasks#using-filters)
-- [Configuration Options](https://turborepo.com/docs/reference/configuration)
-- [CLI Usage](https://turborepo.com/docs/reference/command-line-reference)
+This project is licensed under the MIT License - see the [LICENSE](./LICENSE) file for details.

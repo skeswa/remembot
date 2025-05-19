@@ -62,7 +62,7 @@ jobs:
 
           # Check each app for changes
           for APP in $APPS; do
-            if [[ "${{ steps.changes.outputs[APP] }}" == "true" ]]; then
+            if [[ "${{ steps.changes.outputs['$APP'] }}" == "true" ]]; then
               CHANGED_APPS+=("$APP")
             fi
           done

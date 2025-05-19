@@ -226,8 +226,11 @@ jobs:
               echo "Push successful on attempt $i."
               exit 0
             fi
-            echo "Pull/Push attempt $i failed. Retrying in 10 seconds..."
-            sleep 10
+
+            # Randomize the sleep duration between 5 and 10 seconds
+            SLEEP_DURATION=$(($RANDOM % 5 + 5))
+            echo "Pull/Push attempt $i failed. Retrying in $SLEEP_DURATION seconds..."
+            sleep $SLEEP_DURATION
           done
           echo "Failed to push changes after multiple retries."
           exit 1

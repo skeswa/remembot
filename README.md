@@ -85,6 +85,16 @@ remembot/
    - Enable required status checks
    - Require pull request reviews before merging
 
+3. **Changesets Bot Setup**
+   - Go to [changeset-bot GitHub App](https://github.com/apps/changeset-bot)
+   - Click "Install App"
+   - Select the repositories where you want to use the bot
+   - The bot will automatically:
+     - Check PRs for changesets
+     - Comment on PRs that need changesets
+     - Provide links to create changesets directly from PR comments
+     - Update comments when PRs are modified
+
 ### Development Tools
 
 This project uses several tools to ensure code quality:

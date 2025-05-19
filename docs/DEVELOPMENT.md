@@ -67,6 +67,40 @@ git push origin feature/your-feature-name
 
 4. Create a pull request on GitHub
 
+### Using Changesets
+
+This project uses [Changesets](https://github.com/changesets/changesets) for versioning and changelog management. The changesets bot will automatically check your PRs for changesets.
+
+1. **Creating a Changeset**
+   ```bash
+   # Create a new changeset
+   bun changeset
+   ```
+   This will prompt you to:
+   - Select the type of change (patch, minor, major)
+   - Write a description of the changes
+   - Select the affected packages
+
+2. **Changeset Format**
+   ```markdown
+   ---
+   'package-name': patch|minor|major
+   ---
+
+   Description of changes
+   ```
+
+3. **Changesets Bot**
+   - The bot will automatically comment on PRs that need changesets
+   - It provides a direct link to create a changeset from the PR
+   - The bot will update its comments when PRs are modified
+   - Documentation-only changes typically don't need changesets
+
+4. **Versioning Guidelines**
+   - `patch`: Bug fixes and minor changes
+   - `minor`: New features (backwards compatible)
+   - `major`: Breaking changes
+
 ### Turborepo Commands
 
 ```bash

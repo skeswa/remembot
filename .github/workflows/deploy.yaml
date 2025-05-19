@@ -24,50 +24,14 @@ jobs:
       - name: Checkout Repo
         uses: actions/checkout@v4
 
-      - name: Generate path filters
-        id: generate-filters
-        run: |
-          # Find all apps with k8s directories
-          APPS=$(find apps -maxdepth 2 -type d -name k8s | sed 's|apps/||g' | sed 's|/k8s||g')
-
-          # Generate filters YAML
-          FILTERS=""
-          for APP in $APPS; do
-            FILTERS+="$APP:\n  - 'apps/$APP/k8s/**'\n"
-          done
-
-          # Save filters to a file
-          echo -e "$FILTERS" > filters.yml
-
-          # Output the filters for the next step
-          echo "filters<<EOF" >> $GITHUB_OUTPUT
-          echo -e "$FILTERS" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
-
-      - name: Check for k8s changes
-        uses: dorny/paths-filter@v3
-        id: changes
-        with:
-          filters: ${{ steps.generate-filters.outputs.filters }}
-
       - name: Set matrix
         id: set-matrix
         run: |
-          # Create an array of apps that have changes
-          CHANGED_APPS=()
-
           # Get list of all apps
           APPS=$(find apps -maxdepth 2 -type d -name k8s | sed 's|apps/||g' | sed 's|/k8s||g')
 
-          # Check each app for changes
-          for APP in $APPS; do
-            if [[ "${{ steps.changes.outputs['$APP'] }}" == "true" ]]; then
-              CHANGED_APPS+=("$APP")
-            fi
-          done
-
-          # Create a matrix object
-          MATRIX_JSON=$(echo '{"app": '"$(echo "${CHANGED_APPS[@]}" | jq -R -s -c 'split(" ") | map(select(length > 0))')"'}')
+          # Create a matrix object with all apps
+          MATRIX_JSON=$(echo '{"app": '"$(echo "$APPS" | jq -R -s -c 'split("\n") | map(select(length > 0))')"'}')
 
           echo "matrix=$MATRIX_JSON" >> $GITHUB_OUTPUT
           echo "Matrix: $MATRIX_JSON"

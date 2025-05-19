@@ -18,7 +18,7 @@ spec:
     spec:
       containers:
         - name: courier
-          image: ghcr.io/skeswa/remembot-courier:latest
+          image: ghcr.io/skeswa/remembot-courier:0.1.2
           ports:
             - containerPort: 3000
           resources:

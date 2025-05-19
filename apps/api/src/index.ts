@@ -17,6 +17,11 @@ const server = Bun.serve({
   async fetch(req): Promise<Response | undefined> {
     const path = new URL(req.url).pathname;
 
+    // Health check endpoint
+    if (path === "/health") {
+      return Response.json({ status: "OK" }, { status: 200 });
+    }
+
     if (path === "/courier") {
       console.log("Upgrading to WebSocket:", req);
 

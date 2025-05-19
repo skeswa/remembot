@@ -1,5 +1,19 @@
 import { connectWebSocket } from "./websocket-client";
 
+const PORT = process.env.PORT;
+
+if (!process.env.PORT) {
+  console.error("Error: PORT environment variable is required!");
+
+  if (process.env.NODE_ENV !== "production") {
+    console.log("psst: make sure you have a .env file");
+
+    process.exit(1);
+  }
+
+  process.exit(1);
+}
+
 // --- Reconnection Logic Configuration ---
 const INITIAL_BACKOFF_MS = 1000; // Start with a 1-second delay
 const MAX_BACKOFF_MS = 30000; // Cap the delay at 30 seconds
@@ -13,6 +27,8 @@ function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+console.log(`Health check server listening on port ${PORT}`);
+
 async function main() {
   console.log("Starting Courier application with persistent connection...");
 
@@ -24,7 +40,7 @@ async function main() {
       // Connect and wait for the session to end (resolve on clean close, reject on error/unclean close)
       await connectWebSocket();
       console.log(
-        "WebSocket session ended cleanly. Resetting backoff and reconnecting shortly...",
+        "WebSocket session ended cleanly. Resetting backoff and reconnecting shortly..."
       );
       // Reset backoff after a successful connection and clean closure
       currentBackoff = INITIAL_BACKOFF_MS;
@@ -40,11 +56,27 @@ async function main() {
       // Increase backoff for the next attempt, respecting the maximum
       currentBackoff = Math.min(
         currentBackoff * BACKOFF_FACTOR,
-        MAX_BACKOFF_MS,
+        MAX_BACKOFF_MS
       );
     }
   }
 }
+
+// Serve health checks
+const server = Bun.serve({
+  port: PORT,
+  fetch(req) {
+    const path = new URL(req.url).pathname;
+
+    if (path === "/health") {
+      return Response.json({ status: "OK" }, { status: 200 });
+    }
+
+    return new Response("Not found", { status: 404 });
+  },
+});
+
+console.log(`Listening on ${server.url}`);
 
 main().catch((error) => {
   // This catch is primarily for unexpected errors *outside* the main loop,
@@ -59,7 +91,9 @@ main().catch((error) => {
 // You can now use the 'socket' variable if needed, for example:
 // socket.send("Another message from index.ts");
 
-console.log("Courier application setup complete. Waiting for WebSocket events...");
+console.log(
+  "Courier application setup complete. Waiting for WebSocket events..."
+);
 
 // Note: The process needs to be kept alive for WebSocket communication.
 // Bun might exit if there's no other long-running task or server.

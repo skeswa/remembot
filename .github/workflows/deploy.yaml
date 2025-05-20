@@ -9,6 +9,14 @@ on:
     paths:
       - "apps/*/k8s/**"
 
+  # Allows you to trigger this workflow from another workflow
+  workflow_call:
+    inputs:
+      app_name:
+        description: "Name of the directory within apps/ to deploy"
+        required: true
+        type: string
+
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
 
@@ -27,11 +35,19 @@ jobs:
       - name: Set matrix
         id: set-matrix
         run: |
-          # Get list of all apps
-          APPS=$(find apps -maxdepth 2 -type d -name k8s | sed 's|apps/||g' | sed 's|/k8s||g')
+          if [ -n "${{ inputs.app_name }}" ]; then
+            echo "Preparing to deploy single app from input: ${{ inputs.app_name }}"
+            APPS_JSON="[\"${{ inputs.app_name }}\"]"
+          else
+            echo "Preparing to deploy all apps..."
+            # Get list of all apps
+            APPS=$(find apps -maxdepth 2 -type d -name k8s | sed 's|apps/||g' | sed 's|/k8s||g')
+            # Create a JSON array of apps
+            APPS_JSON=$(echo "$APPS" | jq -R -s -c 'split("\n") | map(select(length > 0))')
+          fi
 
-          # Create a matrix object with all apps
-          MATRIX_JSON=$(echo '{"app": '"$(echo "$APPS" | jq -R -s -c 'split("\n") | map(select(length > 0))')"'}')
+          # Create the final matrix object
+          MATRIX_JSON=$(echo "{\"app\": $APPS_JSON}")
 
           echo "matrix=$MATRIX_JSON" >> $GITHUB_OUTPUT
           echo "Matrix: $MATRIX_JSON"

@@ -241,3 +241,17 @@ jobs:
           done
           echo "Failed to push changes after multiple retries."
           exit 1
+
+      - name: Trigger Deployment Workflow
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.actions.createWorkflowDispatch({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: 'deploy.yaml',
+              ref: 'main', // or context.ref
+              inputs: {
+                app_name: '${{ matrix.app }}'
+              }
+            })

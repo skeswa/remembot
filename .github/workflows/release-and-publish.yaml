@@ -137,6 +137,7 @@ jobs:
     permissions:
       contents: write
       packages: write
+      actions: write # needed to trigger the deploy workflow at the end
     steps:
       - name: Checkout Repo
         uses: actions/checkout@v4

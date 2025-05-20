@@ -1,5 +1,11 @@
 # courier
 
+## 0.2.2
+
+### Patch Changes
+
+- 20f9859: Introduced new permissions to the GitHub Action "Publish" workflow
+
 ## 0.2.1
 
 ### Patch Changes

@@ -220,6 +220,7 @@ jobs:
           echo "Updated ${{ matrix.app }} k8s deployment to use image: ${BASE_IMAGE}:${VERSION}"
 
       - name: Push k8s changes
+        id: push-k8s
         run: |
           # Get the current branch name (e.g., main, develop)
           BRANCH_NAME="${{ github.ref_name }}"

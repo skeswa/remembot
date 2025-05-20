@@ -1,5 +1,11 @@
 # courier
 
+## 0.2.1
+
+### Patch Changes
+
+- 83d1e52: Added alternate build architecture
+
 ## 0.2.0
 
 ### Minor Changes

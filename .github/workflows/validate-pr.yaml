@@ -14,7 +14,7 @@ on:
       - "packages/**"
 
 jobs:
-  # Ensure that changesets are present when apps or packages are modified
+  # Ensure that changesets are present when apps or packages are modified.
   check-changeset:
     runs-on: ubuntu-latest
     steps:
@@ -42,8 +42,8 @@ jobs:
           echo "::error::No changeset found. Please create a changeset by running 'bun changeset' and commit the generated files."
           exit 1
 
-  # This job runs the standard build and test pipeline
-  build-and-test:
+  # Lints, type checks, and tests the project.
+  lint-and-test:
     runs-on: ubuntu-latest
     steps:
       # Checkout the repository code.
@@ -68,6 +68,6 @@ jobs:
       - name: Lint
         run: bun run lint
 
-      # Build the project
-      - name: Build
-        run: bun run build
+      # Test the project.
+      - name: Test
+        run: bun run test

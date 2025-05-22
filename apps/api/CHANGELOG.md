@@ -1,5 +1,11 @@
 # api
 
+## 0.2.5
+
+### Patch Changes
+
+- f3734a9: Customized workflow concurrency labeling
+
 ## 0.2.4
 
 ### Patch Changes

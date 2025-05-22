@@ -1,5 +1,11 @@
 # web
 
+## 0.2.3
+
+### Patch Changes
+
+- 86af8b4: Revised GitHub Actions workflows to be more modular
+
 ## 0.2.2
 
 ### Patch Changes

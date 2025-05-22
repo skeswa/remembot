@@ -48,5 +48,6 @@ jobs:
       matrix: ${{ fromJson(needs.find-apps.outputs.matrix) }}
       fail-fast: false
     uses: ./.github/workflows/deploy-app.yaml
+    secrets: inherit # Necessary for accessing the KUBECONFIG etc.
     with:
       app_name: ${{ matrix.app }}

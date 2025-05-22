@@ -68,3 +68,4 @@ jobs:
       - name: Trigger Publish
         if: steps.changesets.outputs.published == 'true'
         uses: ./.github/workflows/publish-drifted-apps.yaml
+        secrets: inherit # Necessary for accessing the KUBECONFIG etc.

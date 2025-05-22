@@ -171,5 +171,6 @@ jobs:
     name: Deploy Published App
     needs: publish-app
     uses: ./.github/workflows/deploy-app.yaml
+    secrets: inherit # Necessary for accessing the KUBECONFIG etc.
     with:
       app_name: ${{ inputs.app_name }}

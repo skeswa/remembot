@@ -3,11 +3,12 @@
   "private": true,
   "scripts": {
     "build": "turbo run build",
-    "dev": "turbo run dev",
-    "lint": "turbo run lint",
-    "format": "prettier --write \"**/*.{ts,tsx,md}\"",
     "check-types": "turbo run check-types",
-    "postinstall": "find apps -name '.env.example' -exec sh -c 'dir=$(dirname \"{}\"); [ ! -f \"$dir/.env\" ] && cp \"{}\" \"$dir/.env\"' \\;"
+    "dev": "turbo run dev",
+    "format": "prettier --write \"**/*.{ts,tsx,md}\"",
+    "lint": "turbo run lint",
+    "postinstall": "find apps -name '.env.example' -exec sh -c 'dir=$(dirname \"{}\"); [ ! -f \"$dir/.env\" ] && cp \"{}\" \"$dir/.env\"' \\;",
+    "print-changed-packages": "bun run scripts/print_changed_packages.ts"
   },
   "devDependencies": {
     "@changesets/cli": "^2.29.3",

@@ -58,10 +58,10 @@ jobs:
           # So this is a bit of a hack.
           #
           # changesets/action only creates a release on the repo if you have a
-          # publish script and it succeeds. We want the release to be created,
-          # but we want to handle publish ourselves with a dedicated workflow.
-          # So, the cleanest solve is to have a no-op publish script.
-          publish: echo "No-op publish script"
+          # publish script that succeeds with the right output. We want the
+          # release to be created, but we want to handle publish ourselves with
+          # a dedicated workflow.
+          publish: bun print-changed-packages
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 

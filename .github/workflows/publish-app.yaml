@@ -80,8 +80,23 @@ jobs:
             type=raw,value={{date 'YYYYMMDD-HHmmss'}}
             type=raw,value=${{ steps.package-version.outputs.version }}
 
-      # Build and push the Docker image to the container registry.
+      # Check if the versioned image already exists in the registry.
+      - name: Check if image already exists
+        id: check_image
+        run: |
+          IMAGE_NAME="ghcr.io/${{ github.repository_owner }}/${{ steps.project-name.outputs.project_name }}-${{ inputs.app_name }}:${{ steps.package-version.outputs.version }}"
+          echo "Checking for image: $IMAGE_NAME"
+          if docker manifest inspect "$IMAGE_NAME" > /dev/null 2>&1; then
+            echo "Image $IMAGE_NAME already exists. Skipping build and push."
+            echo "image_exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "Image $IMAGE_NAME does not exist. Proceeding with build and push."
+            echo "image_exists=false" >> $GITHUB_OUTPUT
+          fi
+
+      # Build and push the Docker image to the container registry if it doesn't already exist.
       - name: Build and push
+        if: steps.check_image.outputs.image_exists == 'false'
         uses: docker/build-push-action@v5
         with:
           context: .
@@ -151,9 +166,10 @@ jobs:
           echo "Failed to push changes after multiple retries."
           exit 1
 
-      # Finally, trigger the deployment workflow to apply the changes to the
-      # k8s cluster.
-      - name: Deploy changed app
-        uses: ./.github/workflows/deploy-app.yaml
-        with:
-          app_name: ${{ inputs.app_name }}
+  # Trigger the deployment workflow to apply the changes to the k8s cluster.
+  deploy-published-app:
+    name: Deploy Published App
+    needs: publish-app
+    uses: ./.github/workflows/deploy-app.yaml
+    with:
+      app_name: ${{ inputs.app_name }}

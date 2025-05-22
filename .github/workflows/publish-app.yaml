@@ -15,7 +15,7 @@ on:
         required: true
         type: string
 
-concurrency: ${{ github.workflow }}-${{ github.ref }}-${{ inputs.app_name }}
+concurrency: publish-app_${{ github.ref }}_${{ inputs.app_name }}
 
 jobs:
   publish-app:

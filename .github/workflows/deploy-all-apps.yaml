@@ -9,7 +9,7 @@ on:
   # Allows you to run this workflow manually from the Actions tab.
   workflow_dispatch:
 
-concurrency: ${{ github.workflow }}-${{ github.ref }}
+concurrency: deploy-all-apps_${{ github.ref }}
 
 jobs:
   # Find all apps with k8s directories.

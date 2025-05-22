@@ -14,7 +14,7 @@ on:
   # Allows you to run this workflow manually from the Actions tab.
   workflow_dispatch:
 
-concurrency: ${{ github.workflow }}-${{ github.ref }}
+concurrency: publish-drifted-apps-${{ github.ref }}
 
 jobs:
   # Find all apps having versions differing from their k8s-deployed versions.

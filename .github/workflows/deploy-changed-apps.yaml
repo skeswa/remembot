@@ -14,7 +14,7 @@ on:
     paths:
       - "apps/*/k8s/**"
 
-concurrency: ${{ github.workflow }}-${{ github.ref }}
+concurrency: deploy-changed-apps_${{ github.ref }}
 
 jobs:
   # Find all apps that have changed.

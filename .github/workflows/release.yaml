@@ -27,6 +27,7 @@ jobs:
     permissions:
       contents: write
       packages: write
+      pull-requests: write
     outputs:
       should_publish: ${{ steps.changesets.outputs.published == 'true' }}
     steps:

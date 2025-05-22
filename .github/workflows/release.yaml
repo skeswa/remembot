@@ -61,7 +61,7 @@ jobs:
           # publish script and it succeeds. We want the release to be created,
           # but we want to handle publish ourselves with a dedicated workflow.
           # So, the cleanest solve is to have a no-op publish script.
-          publish: cd .
+          publish: echo "No-op publish script"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 

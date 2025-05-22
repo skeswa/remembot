@@ -18,7 +18,7 @@ spec:
     spec:
       containers:
         - name: api
-          image: ghcr.io/skeswa/remembot-api:0.2.3
+          image: ghcr.io/skeswa/remembot-api:0.2.5
           ports:
             - containerPort: 3000
           resources:

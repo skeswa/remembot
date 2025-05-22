@@ -13,10 +13,6 @@ on:
   push:
     branches:
       - main
-    paths:
-      - ".changeset/**"
-      - "apps/*/k8s/**"
-      - "apps/*/package.json"
 
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:

@@ -1,8 +1,13 @@
 /**
- * Prints output wanted by the publish script option of the @changesets/action.
+ * Emulates the functionality of @changesets/publish by identifying packages
+ * that have been released and creating git tags for them.
  *
- * This is the secret sauce that allows us to create releases without needing to
- * do NPM publishes as a by product.
+ * This script looks for commits that:
+ * 1. Remove .changeset files (indicating a release)
+ * 2. Modify package.json files (indicating version updates)
+ *
+ * When such a commit is found, it creates git tags for each released package
+ * in the format of ${packageName}@${version}.
  */
 
 import { execSync } from "child_process";
@@ -13,8 +18,9 @@ interface PackageInfo {
 }
 
 /**
- * Get the packages that have been changed in the last 20 commits.
- * @returns The list of packages that have been changed in the last 20 commits.
+ * Identifies packages that have been released by analyzing recent commits.
+ * Looks for commits that removed changeset files and updated package versions.
+ * @returns Array of package information (name and version) for released packages
  */
 function getChangedPackages(): PackageInfo[] {
   // Get the git log with commit hash and changed files
@@ -85,7 +91,11 @@ function getChangedPackages(): PackageInfo[] {
   return []; // No matching commit found
 }
 
-/** Print the changed packages.*/
+/**
+ * Main function that processes released packages and creates git tags.
+ * For each released package, creates and pushes a git tag in the format
+ * ${packageName}@${version}. Exits with error if tag creation fails.
+ */
 function main() {
   const changedPackages = getChangedPackages();
 
@@ -96,8 +106,21 @@ function main() {
     return;
   }
 
+  // Create and push tags for each changed package
   changedPackages.forEach((pkg) => {
-    console.log(`New tag: ${pkg.name}@${pkg.version}`);
+    const tagName = `${pkg.name}@${pkg.version}`;
+
+    try {
+      // Create and push the tag.
+      execSync(`git tag ${tagName}`, { stdio: "inherit" });
+      execSync(`git push origin ${tagName}`, { stdio: "inherit" });
+
+      console.log(`New tag: ${tagName}`);
+    } catch (error) {
+      console.error(`Failed to create/push tag ${tagName}:`, error);
+
+      process.exit(1);
+    }
   });
 }
 

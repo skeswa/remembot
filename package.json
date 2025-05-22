@@ -8,7 +8,7 @@
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
     "lint": "turbo run lint",
     "postinstall": "find apps -name '.env.example' -exec sh -c 'dir=$(dirname \"{}\"); [ ! -f \"$dir/.env\" ] && cp \"{}\" \"$dir/.env\"' \\;",
-    "print-changed-packages": "bun run scripts/print_changed_packages.ts"
+    "release": "bun run scripts/release.ts"
   },
   "devDependencies": {
     "@changesets/cli": "^2.29.3",

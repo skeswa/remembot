@@ -86,6 +86,6 @@ jobs:
     strategy:
       matrix: ${{ fromJson(needs.find-drifted-apps.outputs.matrix) }}
       fail-fast: false
-    uses: ./.github/workflows/publish_app.yaml
+    uses: ./.github/workflows/publish-app.yaml
     with:
       app_name: ${{ matrix.app }}

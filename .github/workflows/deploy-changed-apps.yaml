@@ -77,6 +77,6 @@ jobs:
     strategy:
       matrix: ${{ fromJson(needs.find-changed-apps.outputs.matrix) }}
       fail-fast: false
-    uses: ./.github/workflows/deploy_app.yaml
+    uses: ./.github/workflows/deploy-app.yaml
     with:
       app_name: ${{ matrix.app }}

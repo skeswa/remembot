@@ -147,6 +147,6 @@ jobs:
       # Finally, trigger the deployment workflow to apply the changes to the
       # k8s cluster.
       - name: Deploy changed app
-        uses: ./.github/workflows/deploy_app.yaml
+        uses: ./.github/workflows/deploy-app.yaml
         with:
           app_name: ${{ inputs.app_name }}

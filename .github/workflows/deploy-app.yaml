@@ -14,7 +14,6 @@ on:
         description: "Name of the directory within apps/ to deploy."
         required: true
         type: string
-    secrets: []
 
 concurrency: ${{ github.workflow }}-${{ github.ref }}-${{ inputs.app_name }}
 

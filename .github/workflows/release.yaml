@@ -24,6 +24,9 @@ jobs:
   release:
     name: Release
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
     outputs:
       should_publish: ${{ steps.changesets.outputs.hasChangesets == 'false' }}
     steps:

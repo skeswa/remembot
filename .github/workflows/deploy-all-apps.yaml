@@ -1,0 +1,52 @@
+# Standalone workflow that re-applies the k8s configuration for all apps in
+# the monorepo.
+#
+# This workflow is purely designed to be called manually by a real person.
+
+name: Deploy All Apps
+
+on:
+  # Allows you to run this workflow manually from the Actions tab.
+  workflow_dispatch:
+
+concurrency: ${{ github.workflow }}-${{ github.ref }}
+
+jobs:
+  # Find all apps with k8s directories.
+  find-apps:
+    name: Find Apps
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      # Checkout the repository code.
+      - name: Checkout Repo
+        uses: actions/checkout@v4
+
+      # Set the matrix of apps to deploy.
+      - name: Set matrix
+        id: set-matrix
+        run: |
+          # Get list of all apps.
+          APPS=$(find apps -maxdepth 2 -type d -name k8s | sed 's|apps/||g' | sed 's|/k8s||g')
+          # Create a JSON array of apps.
+          APPS_JSON=$(echo "$APPS" | jq -R -s -c 'split("\n") | map(select(length > 0))')
+
+          # Create the final matrix object.
+          MATRIX_JSON=$(echo "{\"app\": $APPS_JSON}")
+
+          echo "matrix=$MATRIX_JSON" >> $GITHUB_OUTPUT
+          echo "Matrix: $MATRIX_JSON"
+
+  # Deploy each app using the reusable workflow.
+  deploy-apps:
+    name: Deploy Apps
+    needs: find-apps
+    # Only run this job if there are apps to deploy.
+    if: ${{ fromJson(needs.find-apps.outputs.matrix).app[0] != null }}
+    strategy:
+      matrix: ${{ fromJson(needs.find-apps.outputs.matrix) }}
+      fail-fast: false
+    uses: ./.github/workflows/deploy_app.yaml
+    with:
+      app_name: ${{ matrix.app }}

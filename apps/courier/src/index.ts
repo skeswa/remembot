@@ -29,11 +29,14 @@ function delay(ms: number): Promise<void> {
 
 console.log(`Health check server listening on port ${PORT}`);
 
+// Main application entry point that manages WebSocket connection lifecycle
 async function main() {
   console.log("Starting Courier application with persistent connection...");
 
+  // Initialize exponential backoff for reconnection attempts
   let currentBackoff = INITIAL_BACKOFF_MS;
 
+  // Main connection loop - will run indefinitely to maintain connection
   while (true) {
     try {
       console.log("Attempting to connect to WebSocket server...");
@@ -53,7 +56,8 @@ async function main() {
       // Wait for the current backoff duration
       await delay(currentBackoff);
 
-      // Increase backoff for the next attempt, respecting the maximum
+      // Implement exponential backoff with a maximum limit
+      // This helps prevent overwhelming the server during reconnection attempts
       currentBackoff = Math.min(
         currentBackoff * BACKOFF_FACTOR,
         MAX_BACKOFF_MS
@@ -78,6 +82,7 @@ const server = Bun.serve({
 
 console.log(`Listening on ${server.url}`);
 
+// Global error handler for unexpected errors outside the main loop
 main().catch((error) => {
   // This catch is primarily for unexpected errors *outside* the main loop,
   // though the loop itself is designed to run indefinitely.

@@ -1,0 +1,112 @@
+# Reusable workflow that re-applies the k8s configuration for a specific app in
+# the monorepo.
+#
+# This workflow is designed to be called by the `deploy-all-apps.yaml` and
+# `release-and-publish.yaml` workflows.
+
+name: Deploy App
+
+on:
+  # Allows you to call this workflow from another one.
+  workflow_call:
+    inputs:
+      app_name:
+        description: "Name of the directory within apps/ to deploy."
+        required: true
+        type: string
+    secrets: []
+
+concurrency: ${{ github.workflow }}-${{ github.ref }}-${{ inputs.app_name }}
+
+jobs:
+  deploy-app:
+    name: Deploy App
+    runs-on: ubuntu-latest
+    steps:
+      # Checkout the repository code.
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Install kubectl for Kubernetes cluster interaction.
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: "latest"
+
+      # Read the deployment target from the app's k8s configuration.
+      # This determines which environment (e.g., DEV, PROD) to deploy to.
+      - name: Read deployment target
+        id: target
+        run: |
+          TARGET=$(cat apps/${{ inputs.app_name }}/k8s/target.yaml | tr -d '[:space:]' | tr '[:lower:]' '[:upper:]')
+          echo "target=$TARGET" >> $GITHUB_OUTPUT
+          echo "Using deployment target: $TARGET"
+
+      # Verify that the required kubeconfig secret exists for the target
+      # environment. This secret contains the Kubernetes cluster credentials.
+      - name: Validate kubeconfig secret exists
+        id: validate-kubeconfig-secret
+        run: |
+          SECRET_NAME="${{ steps.target.outputs.target }}_KUBECONFIG"
+          KUBECONFIG="${{ secrets[format('{0}_KUBECONFIG', steps.target.outputs.target)] }}"
+          if [ -z "$KUBECONFIG" ]; then
+            echo "::error::Required secret '$SECRET_NAME' is not set. Please add this secret to the repository."
+            exit 1
+          fi
+          echo "kubeconfig<<EOF" >> $GITHUB_OUTPUT
+          echo "$KUBECONFIG" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      # Configure kubectl with the cluster credentials.
+      - name: Setup k8s configuration
+        run: |
+          mkdir -p $HOME/.kube
+          echo "${{ steps.validate-kubeconfig-secret.outputs.kubeconfig }}" > $HOME/.kube/config
+          chmod 600 $HOME/.kube/config
+
+      # Apply Kubernetes manifests in a specific order to ensure proper
+      # deployment. The order is important for dependencies between resources.
+      - name: Applying ${{ inputs.app_name }} k8s configuration
+        run: |
+          echo "Applying ${{ inputs.app_name }} k8s configuration..."
+          APP_K8S_PATH="apps/${{ inputs.app_name }}/k8s"
+
+          # Define the specific order of files to ensure proper resource creation.
+          # Namespace must be created first, followed by core resources, then networking.
+          ORDERED_FILES=(
+            "namespace.yaml"      # Create namespace first.
+            "deployment.yaml"     # Deploy the application.
+            "service.yaml"        # Create service for internal access.
+            "certificate.yaml"    # Set up TLS certificates.
+            "ingress.yaml"        # Configure external access.
+          )
+
+          # Apply files in the specified order to handle dependencies correctly.
+          for FILE_NAME in "${ORDERED_FILES[@]}"; do
+            FILE_PATH="$APP_K8S_PATH/$FILE_NAME"
+            if [ -f "$FILE_PATH" ]; then
+              echo "Applying (ordered) $FILE_PATH..."
+              kubectl apply -f "$FILE_PATH"
+            fi
+          done
+
+          # Apply any remaining Kubernetes manifests that weren't in the ordered list.
+          # This handles additional resources like ConfigMaps, Secrets, etc.
+          echo "Applying remaining YAML files..."
+          for file in $(find "$APP_K8S_PATH" -type f -name "*.yaml" ! -name "target.yaml"); do
+            # Check if the file is one of the ordered files (already applied or handled).
+            IS_ORDERED_FILE=false
+            for ORDERED_FILE_NAME in "${ORDERED_FILES[@]}"; do
+              if [ "$(basename "$file")" == "$ORDERED_FILE_NAME" ]; then
+                IS_ORDERED_FILE=true
+                break
+              fi
+            done
+
+            if [ "$IS_ORDERED_FILE" == "false" ]; then
+              echo "Applying (remaining) $file..."
+              kubectl apply -f "$file"
+            fi
+          done
+
+          echo "${{ inputs.app_name }} deployed successfully."

@@ -1,0 +1,82 @@
+# Standalone workflow that re-applies any app k8s configuration that has
+# changed.
+#
+# This workflow is purely designed to be triggered by pushes to the main branch.
+
+name: Deploy Changed Apps
+
+on:
+  # Triggers this workflow when a push is made to the main branch that tweaks
+  # k8s configuration.
+  push:
+    branches:
+      - main
+    paths:
+      - "apps/*/k8s/**"
+
+concurrency: ${{ github.workflow }}-${{ github.ref }}
+
+jobs:
+  # Find all apps that have changed.
+  find-changed-apps:
+    name: Find Changed Apps
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      # Checkout the repository code.
+      - name: Checkout Repo
+        uses: actions/checkout@v4
+        with:
+          # This makes Actions fetch all Git history so that Changesets can
+          # generate changelogs with the correct commits.
+          fetch-depth: 0
+
+      # Get list of changed files using tj-actions/changed-files.
+      - name: Get changed files
+        id: changed-files
+        uses: tj-actions/changed-files@v46
+        with:
+          files: |
+            apps/*/k8s/**
+            apps/*/k8s/**/*
+
+      # Set app matrix based on changed files.
+      - name: Set matrix
+        id: set-matrix
+        run: |
+          # Get list of changed files from the action output.
+          CHANGED_FILES="${{ steps.changed-files.outputs.all_changed_files }}"
+
+          # Find unique apps that have changed and have k8s directories.
+          CHANGED_APPS=$(echo "$CHANGED_FILES" | grep "^apps/[^/]*/" | cut -d/ -f2 | sort -u)
+
+          # Filter for apps that have k8s directories.
+          APPS_WITH_K8S=""
+          for app in $CHANGED_APPS; do
+            if [ -d "apps/$app/k8s" ]; then
+              APPS_WITH_K8S="$APPS_WITH_K8S $app"
+            fi
+          done
+
+          # Create JSON array of apps.
+          APPS_JSON=$(echo "$APPS_WITH_K8S" | tr ' ' '\n' | jq -R -s -c 'split("\n") | map(select(length > 0))')
+
+          # Create the final matrix object.
+          MATRIX_JSON=$(echo "{\"app\": $APPS_JSON}")
+
+          echo "matrix=$MATRIX_JSON" >> $GITHUB_OUTPUT
+          echo "Matrix: $MATRIX_JSON"
+
+  # Deploy each changed app using the reusable workflow.
+  deploy-apps:
+    name: Deploy Apps
+    needs: find-changed-apps
+    # Only run this job if there are apps to deploy.
+    if: ${{ fromJson(needs.find-changed-apps.outputs.matrix).app[0] != null }}
+    strategy:
+      matrix: ${{ fromJson(needs.find-changed-apps.outputs.matrix) }}
+      fail-fast: false
+    uses: ./.github/workflows/deploy_app.yaml
+    with:
+      app_name: ${{ matrix.app }}

@@ -1,0 +1,71 @@
+# Standalone workflow that creates a new release when necessary, or else
+# triggers a publish of all drifted apps.
+#
+# This should be the most commonly triggered workflow, as any push to k8s
+# configuration, changesets configuration, or Node.js configuration kicks it
+# off.
+
+name: Release
+
+on:
+  # Triggers this workflow when a push is made to the main branch that tweaks
+  # k8s configuration or package.json files.
+  push:
+    branches:
+      - main
+    paths:
+      - ".changeset/**"
+      - "apps/*/k8s/**"
+      - "apps/*/package.json"
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+concurrency: ${{ github.workflow }}-${{ github.ref }}
+
+jobs:
+  # Create a release pull request or publish changed apps.
+  release:
+    name: Release
+    runs-on: ubuntu-latest
+    outputs:
+      should_publish: ${{ steps.changesets.outputs.hasChangesets == 'false' }}
+    steps:
+      # Checkout the repository code.
+      - name: Checkout Repo
+        uses: actions/checkout@v4
+        with:
+          # This makes Actions fetch all Git history so that Changesets can
+          # generate changelogs with the correct commits.
+          fetch-depth: 0
+
+      # Install Bun.
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: "1.2.11"
+
+      # Install dependencies (we need this so the Changesets action works).
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      # Create a release pull request if there are changesets, otherwise trigger
+      # a publish.
+      - name: Create Release
+        id: changesets
+        uses: changesets/action@v1
+        with:
+          # So this is a bit of a hack.
+          #
+          # changesets/action only creates a release on the repo if you have a
+          # publish script and it succeeds. We want the release to be created,
+          # but we want to handle publish ourselves with a dedicated workflow.
+          # So, the cleanest solve is to have a no-op publish script.
+          publish: cd .
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # Trigger a publish iff no changesets.
+      - name: Trigger Publish
+        if: steps.changesets.outputs.published == 'true'
+        uses: ./.github/workflows/publish-drifted-apps.yaml

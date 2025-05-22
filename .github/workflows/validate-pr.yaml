@@ -1,3 +1,8 @@
+# Standalone workflow that validates a pull request.
+#
+# This workflow runs checks on pull requests to ensure code quality and proper change management.
+# It specifically validates changes to apps and packages directories.
+
 name: Validate PR
 
 on:
@@ -9,65 +14,20 @@ on:
       - "packages/**"
 
 jobs:
-  detect-apps:
-    runs-on: ubuntu-latest
-    outputs:
-      app_changes: ${{ steps.detect-changes.outputs.changes }}
-      all_apps: ${{ steps.find-apps.outputs.apps }}
-      any_app_changed: ${{ steps.check-any-changed.outputs.changed }}
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Find all apps
-        id: find-apps
-        run: |
-          # Find all directories in the apps directory
-          APPS=$(find apps -maxdepth 1 -mindepth 1 -type d -exec basename {} \; | jq -R -s -c 'split("\n") | map(select(length > 0))')
-          echo "apps=$APPS" >> $GITHUB_OUTPUT
-          echo "Found apps: $APPS"
-
-      - name: Check if any app changed
-        id: check-any-changed
-        run: |
-          # Get all apps as JSON array
-          APPS_JSON='${{ steps.find-apps.outputs.apps }}'
-
-          # Get all changes as JSON object
-          CHANGES_JSON='${{ steps.detect-changes.outputs.changes }}'
-
-          # Convert apps to shell array
-          readarray -t APPS_ARRAY < <(echo "$APPS_JSON" | jq -r '.[]')
-
-          # Check if any app changed
-          ANY_CHANGED=false
-          for app in "${APPS_ARRAY[@]}"; do
-            # Skip empty entries
-            [ -z "$app" ] && continue
-            
-            # Check if this app changed
-            IS_CHANGED=$(echo "$CHANGES_JSON" | jq -r ".$app")
-            if [ "$IS_CHANGED" == "true" ]; then
-              ANY_CHANGED=true
-              break
-            fi
-          done
-
-          echo "changed=$ANY_CHANGED" >> $GITHUB_OUTPUT
-          echo "Any app changed: $ANY_CHANGED"
-
+  # Ensure that changesets are present when apps or packages are modified
   check-changeset:
-    needs: detect-apps
     runs-on: ubuntu-latest
-    if: needs.detect-apps.outputs.any_app_changed == 'true'
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      # Verify that a changeset file exists for the PR.
       - name: Check for Changesets
         id: check-changeset
         run: |
-          if [ -n "$(ls -A .changeset/*.md 2>/dev/null)" ]; then
+          # Look for files that match the changeset pattern (random string + .md)
+          # and contain the required changeset content
+          if [ -n "$(find .changeset -maxdepth 1 -type f -name "*.md" ! -name "README.md" -exec grep -l "---" {} \;)" ]; then
             echo "has_changeset=true" >> $GITHUB_OUTPUT
             echo "✅ Changeset found"
           else
@@ -75,31 +35,39 @@ jobs:
             echo "❌ No changeset found"
           fi
 
+      # Show error message if no changeset is found.
       - name: Show changeset requirement
         if: steps.check-changeset.outputs.has_changeset != 'true'
         run: |
           echo "::error::No changeset found. Please create a changeset by running 'bun changeset' and commit the generated files."
           exit 1
 
+  # This job runs the standard build and test pipeline
   build-and-test:
     runs-on: ubuntu-latest
     steps:
+      # Checkout the repository code.
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      # Install Bun.
       - name: Setup Bun
         uses: oven-sh/setup-bun@v1
         with:
           bun-version: "1.2.11"
 
+      # Install dependencies so we can run checks.
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
-      - name: Type check
+      # Run type checking.
+      - name: Check types
         run: bun run check-types
 
+      # Run linting.
       - name: Lint
         run: bun run lint
 
+      # Build the project
       - name: Build
         run: bun run build

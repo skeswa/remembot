@@ -34,6 +34,14 @@ jobs:
           # reliably.
           fetch-depth: 0
 
+      # Extract the project name from the root package.json file.
+      - name: Extract project name
+        id: project-name
+        run: |
+          PROJECT_NAME=$(node -p "require('./package.json').name")
+          echo "project_name=$PROJECT_NAME" >> $GITHUB_OUTPUT
+          echo "Extracted project name: $PROJECT_NAME from ./package.json"
+
       # Set up Docker Buildx to enable multi-architecture builds
       # (both amd64 and arm64 so that we can run on Macs).
       - name: Set up Docker Buildx
@@ -65,7 +73,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ghcr.io/${{ github.repository_owner }}/${{ needs.pre-publish.outputs.project_name }}-${{ inputs.app_name }}
+          images: ghcr.io/${{ github.repository_owner }}/${{ steps.project-name.outputs.project_name }}-${{ inputs.app_name }}
           tags: |
             type=sha,format=short
             type=raw,value=latest
@@ -89,7 +97,7 @@ jobs:
       - name: Update image tag in k8s manifest and commit changes
         run: |
           # Set the base image name directly from the known pattern.
-          BASE_IMAGE="ghcr.io/${{ github.repository_owner }}/${{ needs.pre-publish.outputs.project_name }}-${{ inputs.app_name }}"
+          BASE_IMAGE="ghcr.io/${{ github.repository_owner }}/${{ steps.project-name.outputs.project_name }}-${{ inputs.app_name }}"
           VERSION="${{ steps.package-version.outputs.version }}"
 
           # Create a temporary file for the new content.

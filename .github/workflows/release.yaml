@@ -60,7 +60,7 @@ jobs:
           # publish script that succeeds with the right output. We want the
           # release to be created, but we want to handle publish ourselves with
           # a dedicated workflow.
-          publish: bun print-changed-packages
+          publish: bun release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 

@@ -1,5 +1,11 @@
 # courier
 
+## 0.2.4
+
+### Patch Changes
+
+- 4fe49d5: Fully revised CI/CD strategy for remembot and other rhuidean projects
+
 ## 0.2.3
 
 ### Patch Changes

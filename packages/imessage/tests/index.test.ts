@@ -1,8 +1,10 @@
 import { describe, it, expect, beforeEach, mock } from "bun:test";
 
+import type { Chat } from "@/chat";
+import type { Handle } from "@/handle";
 import * as imessage from "@/index";
+import type { Message } from "@/message";
 import { EventEmitter } from "events";
-import type { Handle, Chat, Message } from "@/types";
 
 interface BaseMock {
   calls: unknown[][];
@@ -181,9 +183,9 @@ describe("iMessage API (index.ts)", () => {
       executeAppleScriptMock.mockResolvedValue(undefined);
       await imessage.send(handle, text);
       expect(executeAppleScriptMock.calls.length).toBe(1);
-      expect((executeAppleScriptMock.calls[0]![0] as string).toString()).toContain(
-        `send "${text}" to buddy "${handle}"`,
-      );
+      expect(
+        (executeAppleScriptMock.calls[0]![0] as string).toString(),
+      ).toContain(`send "${text}" to buddy "${handle}"`);
     });
 
     it("should throw if handle or text is missing for send", async () => {
@@ -203,9 +205,9 @@ describe("iMessage API (index.ts)", () => {
       executeAppleScriptMock.mockResolvedValue(undefined);
       await imessage.sendFile(handle, filePath);
       expect(executeAppleScriptMock.calls.length).toBe(1);
-      expect((executeAppleScriptMock.calls[0]![0] as string).toString()).toContain(
-        `send POSIX file "${filePath}" to buddy "${handle}"`,
-      );
+      expect(
+        (executeAppleScriptMock.calls[0]![0] as string).toString(),
+      ).toContain(`send POSIX file "${filePath}" to buddy "${handle}"`);
     });
 
     it("should throw if handle or filePath is missing for sendFile", async () => {

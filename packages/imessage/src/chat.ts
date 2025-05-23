@@ -79,7 +79,7 @@ export async function getRecentChats(limit: number = 10): Promise<Chat[]> {
   `;
   const rawParticipants = await queryDb<RawChatParticipant>(
     participantsQuery,
-    chatIds
+    chatIds,
   );
 
   // Map of chatId to array of participant handles

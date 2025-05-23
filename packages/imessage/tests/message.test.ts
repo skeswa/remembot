@@ -3,11 +3,13 @@ import os from "os";
 
 import { EventEmitter } from "events";
 import { listen, stopListening } from "@/message";
-import type { Message } from "@/types";
+import type { Message } from "@/message";
 
 interface QueryDbMock {
   calls: unknown[][];
-  _queue: Array<{ type: "resolve"; val: unknown } | { type: "reject"; err: unknown }>;
+  _queue: Array<
+    { type: "resolve"; val: unknown } | { type: "reject"; err: unknown }
+  >;
   mockClear: () => void;
   mockResolvedValueOnce: (val: unknown) => void;
   mockRejectedValueOnce: (err: unknown) => void;
@@ -72,8 +74,8 @@ describe("message utility - listen and stopListening", () => {
   it("should initialize lastMessageRowId with MAX(ROWID) from message table", async () => {
     // Wait for the initial fetch to complete
     await new Promise((resolve) => setTimeout(resolve, 10));
-    expect(queryDbMock.calls[0][0]).toBe(
-      "SELECT MAX(ROWID) as max_id FROM message;",
+    expect(queryDbMock.calls[0]?.[0]).toBe(
+      "SELECT MAX(ROWID) as max_id FROM message;"
     );
   });
 
@@ -190,7 +192,7 @@ describe("message utility - listen and stopListening", () => {
     stopListening();
     queryDbMock.mockReset();
     const mockErrorHandler = (...args: unknown[]) => {
-      mockErrorHandler.calls.push(args);
+      mockErrorHandler.calls.push(args as Array<{ message?: string }>);
     };
     mockErrorHandler.calls = [] as Array<{ message?: string }[]>;
     const initError = new Error("Initial MAX_ID failed");
@@ -199,7 +201,7 @@ describe("message utility - listen and stopListening", () => {
     newEmitter.on("error", mockErrorHandler);
     await new Promise((resolve) => setTimeout(resolve, 15));
     expect(mockErrorHandler.calls[0]?.[0]?.message).toContain(
-      "Failed to initialize message listener",
+      "Failed to initialize message listener"
     );
     newEmitter.removeAllListeners();
   });

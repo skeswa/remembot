@@ -61,7 +61,7 @@ export async function send(handle: Handle, text: string): Promise<void> {
  */
 export async function sendFile(
   handle: Handle,
-  filePath: string
+  filePath: string,
 ): Promise<void> {
   if (!handle || !filePath) {
     throw new Error("Handle and filePath must be provided.");

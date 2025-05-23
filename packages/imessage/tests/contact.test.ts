@@ -1,7 +1,7 @@
 import { describe, it, expect, afterEach, beforeEach, mock } from "bun:test";
 
 import { handleForName, nameForHandle } from "@/contact";
-import type { Handle } from "@/types";
+import type { Handle } from "@/handle";
 
 interface ExecuteAppleScriptMock {
   calls: unknown[][];
@@ -113,7 +113,7 @@ describe("contact utility", () => {
 
     it("should throw an error if handle is not provided", async () => {
       await expect(nameForHandle("")).rejects.toThrow(
-        "Handle must be provided."
+        "Handle must be provided.",
       );
     });
 

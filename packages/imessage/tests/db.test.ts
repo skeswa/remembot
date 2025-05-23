@@ -17,7 +17,7 @@ interface MockDbInstance {
   _allImpl: (
     _sql: string,
     _params: unknown[],
-    cb: (err: Error | null, rows: unknown[]) => void
+    cb: (err: Error | null, rows: unknown[]) => void,
   ) => void;
   _closeImpl: (cb: (err: Error | null) => void) => void;
   _onImpl: (...args: unknown[]) => void;
@@ -37,11 +37,11 @@ mock.module("sqlite3", () => {
   mockDbInstance = {
     all: (...args: Parameters<MockDbInstance["all"]>) =>
       mockDbInstance._allImpl(
-        ...(args as Parameters<MockDbInstance["_allImpl"]>)
+        ...(args as Parameters<MockDbInstance["_allImpl"]>),
       ),
     close: (...args: Parameters<MockDbInstance["close"]>) =>
       mockDbInstance._closeImpl(
-        ...(args as Parameters<MockDbInstance["_closeImpl"]>)
+        ...(args as Parameters<MockDbInstance["_closeImpl"]>),
       ),
     on: (...args: Parameters<MockDbInstance["on"]>) =>
       mockDbInstance._onImpl(...args),
@@ -63,7 +63,7 @@ mock.module("sqlite3", () => {
     mockSqlite3Database._impl = undefined;
   };
   mockSqlite3Database.mockImplementationOnce = (
-    fn: (...args: unknown[]) => MockDbInstance
+    fn: (...args: unknown[]) => MockDbInstance,
   ) => {
     mockSqlite3Database._impl = fn;
   };
@@ -99,7 +99,7 @@ describe("db utility", () => {
       expect(mockSqlite3Database).toHaveBeenCalledWith(
         DB_PATH,
         sqlite3.OPEN_READONLY,
-        expect.any(Function)
+        expect.any(Function),
       );
     });
 
@@ -114,12 +114,12 @@ describe("db utility", () => {
         const [, , callback] = args;
         if (typeof callback === "function")
           (callback as (err: Error | null) => void)(
-            new Error("Connection failed")
+            new Error("Connection failed"),
           );
         return mockDbInstance;
       });
       expect(() => queryDb("SELECT 1")).toThrow(
-        "Failed to connect to iMessage DB: Connection failed"
+        "Failed to connect to iMessage DB: Connection failed",
       );
       mockSqlite3Database.mockClear();
     });
@@ -133,7 +133,7 @@ describe("db utility", () => {
       mockDbInstance._allImpl = (
         _sql: string,
         _params: unknown[],
-        cb: (err: Error | null, rows: unknown[]) => void
+        cb: (err: Error | null, rows: unknown[]) => void,
       ) => cb(null, expectedRows);
 
       const result = await queryDb(sql, params);
@@ -147,11 +147,11 @@ describe("db utility", () => {
       mockDbInstance._allImpl = (
         _sql: string,
         _params: unknown[],
-        cb: (err: Error | null, rows: unknown[]) => void
+        cb: (err: Error | null, rows: unknown[]) => void,
       ) => cb(new Error(errorMessage), []);
 
       await expect(queryDb(sql)).rejects.toThrow(
-        `Database query failed: ${errorMessage}`
+        `Database query failed: ${errorMessage}`,
       );
     });
   });

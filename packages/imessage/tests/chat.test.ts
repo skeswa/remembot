@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, mock } from "bun:test";
+import os from "os";
 
 import { getRecentChats } from "@/chat";
-import os from "os";
 
 // Mocks
 interface QueryDbMock {
@@ -106,9 +106,13 @@ describe("chat utility - getRecentChats", () => {
     const chats = await getRecentChats(2);
 
     expect(queryDbMock.calls.length).toBe(2);
-    expect((queryDbMock.calls[0]![0] as string).toString()).toContain("ORDER BY m.date DESC");
+    expect((queryDbMock.calls[0]![0] as string).toString()).toContain(
+      "ORDER BY m.date DESC",
+    );
     expect(queryDbMock.calls[0]![1]).toEqual([2]);
-    expect((queryDbMock.calls[1]![0] as string).toString()).toContain("WHERE chj.chat_id IN (?,?)");
+    expect((queryDbMock.calls[1]![0] as string).toString()).toContain(
+      "WHERE chj.chat_id IN (?,?)",
+    );
     expect(queryDbMock.calls[1]![1]).toEqual([1, 2]);
 
     expect(chats!.length).toBe(2);

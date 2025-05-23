@@ -13,11 +13,13 @@
 ### 1. k3s Cluster
 
 1. Install k3s on your server:
+
 ```bash
 curl -sfL https://get.k3s.io | sh -
 ```
 
 2. Configure kubectl:
+
 ```bash
 # Copy kubeconfig
 sudo cat /etc/rancher/k3s/k3s.yaml > ~/.kube/config
@@ -30,6 +32,7 @@ export KUBECONFIG=~/.kube/config
 ### 2. Database Setup
 
 1. Deploy PostgreSQL using Helm:
+
 ```bash
 # Add Bitnami Helm repo
 helm repo add bitnami https://charts.bitnami.com/bitnami
@@ -42,6 +45,7 @@ helm install postgres bitnami/postgresql \
 ```
 
 2. Get database credentials:
+
 ```bash
 export POSTGRES_PASSWORD=$(kubectl get secret postgres-postgresql -o jsonpath="{.data.postgres-password}" | base64 --decode)
 ```
@@ -49,6 +53,7 @@ export POSTGRES_PASSWORD=$(kubectl get secret postgres-postgresql -o jsonpath="{
 ### 3. Redis Setup
 
 1. Deploy Redis using Helm:
+
 ```bash
 helm repo add bitnami https://charts.bitnami.com/bitnami
 helm install redis bitnami/redis
@@ -70,11 +75,13 @@ docker push your-registry/remembot:latest
 ### 2. Deploy to k3s
 
 1. Create namespace:
+
 ```bash
 kubectl create namespace remembot
 ```
 
 2. Apply configurations:
+
 ```bash
 # Apply secrets
 kubectl apply -f k8s/secrets.yaml
@@ -92,11 +99,13 @@ kubectl apply -f k8s/services.yaml
 ### 3. Configure Ingress
 
 1. Set up SSL certificate:
+
 ```bash
 kubectl apply -f k8s/certificate.yaml
 ```
 
 2. Configure ingress:
+
 ```bash
 kubectl apply -f k8s/ingress.yaml
 ```
@@ -122,12 +131,14 @@ helm install grafana grafana/grafana
 ### Database Backups
 
 1. Configure automated backups:
+
 ```bash
 # Create backup cronjob
 kubectl apply -f k8s/backup-cronjob.yaml
 ```
 
 2. Manual backup:
+
 ```bash
 # Create backup
 kubectl exec -it postgres-postgresql-0 -- pg_dump -U remembot remembot > backup.sql
@@ -136,6 +147,7 @@ kubectl exec -it postgres-postgresql-0 -- pg_dump -U remembot remembot > backup.
 ### Recovery Process
 
 1. Restore from backup:
+
 ```bash
 # Copy backup to pod
 kubectl cp backup.sql postgres-postgresql-0:/tmp/
@@ -155,6 +167,7 @@ kubectl apply -f k8s/hpa.yaml
 ### Database Scaling
 
 1. Vertical scaling:
+
 ```bash
 # Update PostgreSQL resources
 helm upgrade postgres bitnami/postgresql \
@@ -163,6 +176,7 @@ helm upgrade postgres bitnami/postgresql \
 ```
 
 2. Read replicas:
+
 ```bash
 # Add read replicas
 helm upgrade postgres bitnami/postgresql \
@@ -180,6 +194,7 @@ kubectl apply -f k8s/network-policies.yaml
 ### Secret Management
 
 1. Store secrets in Kubernetes:
+
 ```bash
 kubectl create secret generic app-secrets \
   --from-literal=DB_PASSWORD=your-password \
@@ -187,6 +202,7 @@ kubectl create secret generic app-secrets \
 ```
 
 2. Use external secret management:
+
 ```bash
 # Install external-secrets operator
 helm install external-secrets external-secrets/external-secrets
@@ -197,12 +213,14 @@ helm install external-secrets external-secrets/external-secrets
 ### Updates
 
 1. Update application:
+
 ```bash
 kubectl set image deployment/remembot \
   remembot=your-registry/remembot:new-version
 ```
 
 2. Database migrations:
+
 ```bash
 kubectl apply -f k8s/migrations.yaml
 ```
@@ -210,12 +228,14 @@ kubectl apply -f k8s/migrations.yaml
 ### Monitoring
 
 1. Check application health:
+
 ```bash
 kubectl get pods -n remembot
 kubectl logs -f deployment/remembot
 ```
 
 2. Monitor resources:
+
 ```bash
 kubectl top pods -n remembot
 kubectl top nodes
@@ -226,11 +246,13 @@ kubectl top nodes
 ### Common Issues
 
 1. **Pod CrashLoopBackOff**
+
    - Check pod logs
    - Verify environment variables
    - Check resource limits
 
 2. **Database Connection Issues**
+
    - Verify network policies
    - Check credentials
    - Test connection from pod
@@ -243,15 +265,17 @@ kubectl top nodes
 ## Rollback Procedures
 
 1. Rollback deployment:
+
 ```bash
 kubectl rollout undo deployment/remembot
 ```
 
 2. Restore database:
+
 ```bash
 # Copy backup to pod
 kubectl cp backup.sql postgres-postgresql-0:/tmp/
 
 # Restore database
 kubectl exec -it postgres-postgresql-0 -- psql -U remembot remembot -f /tmp/backup.sql
-``` 
+```

@@ -20,11 +20,13 @@ By participating in this project, you agree to maintain a respectful and inclusi
 ### 2. Setup Development Environment
 
 1. Install dependencies:
+
    ```bash
    bun install
    ```
 
 2. Set up environment variables:
+
    ```bash
    bun run postinstall
    ```
@@ -37,6 +39,7 @@ By participating in this project, you agree to maintain a respectful and inclusi
 ### 3. Create a Branch
 
 Create a new branch for your feature or bugfix:
+
 ```bash
 git checkout -b feature/your-feature-name
 # or
@@ -62,12 +65,14 @@ git checkout -b fix/your-bugfix-name
 ### 5. Commit Your Changes
 
 Follow these commit message guidelines:
+
 - Use present tense ("Add feature" not "Added feature")
 - Use imperative mood ("Move cursor to..." not "Moves cursor to...")
 - Limit the first line to 72 characters or less
 - Reference issues and pull requests liberally after the first line
 
 Example:
+
 ```
 feat: add new todo creation endpoint
 
@@ -81,6 +86,7 @@ Closes #123
 ### 6. Push and Create Pull Request
 
 1. Push your branch:
+
    ```bash
    git push origin feature/your-feature-name
    ```
@@ -109,11 +115,13 @@ This project uses several tools to ensure code quality and maintainability:
 We use Changesets to manage versioning and releases. When making changes that require a version bump:
 
 1. Create a changeset:
+
    ```bash
    bun changeset
    ```
 
 2. Select the type of change:
+
    - `patch` for bug fixes and minor changes
    - `minor` for new features that don't break existing functionality
    - `major` for breaking changes
@@ -123,6 +131,7 @@ We use Changesets to manage versioning and releases. When making changes that re
 4. Commit the changeset file
 
 The maintainers will handle the release process, which includes:
+
 - Version bumping
 - Changelog generation
 - Publishing packages
@@ -164,4 +173,4 @@ The maintainers will handle the release process, which includes:
 
 ## License
 
-By contributing to Remembot, you agree that your contributions will be licensed under the project's MIT License. 
+By contributing to Remembot, you agree that your contributions will be licensed under the project's MIT License.

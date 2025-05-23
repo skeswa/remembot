@@ -1,0 +1,416 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+---
+description: Guidelines for writing clean, maintainable, and human-readable code. Apply these rules when writing or reviewing code to ensure consistency and quality.
+globs:
+---
+
+# Code Conventions
+
+## General
+
+### Prefer immutability where possible
+
+The possibility for change makes anything more difficult to reason about. This
+is the "killer app" of immutable state design - it optimizes application state
+design for the human brains responsible for maintaining it.
+
+Where possible, try to make fields of classes, structs, and objects immutable by
+default. In cases where this is not possible, leave a comment elaborating upon
+the circumstances under which said field(s) can change.
+
+**Compliant**
+
+```ts {.good}
+interface Foo {
+  readonly a: Readonly<Bar>;
+  readonly b: string;
+
+  // `c` can change when the Sixers win a championship.
+  c: number;
+}
+
+interface Bar {
+  // `d` can change when the Celtics become likable.
+  d: boolean;
+}
+```
+
+**Defiant**
+
+```ts {.bad}
+interface Foo {
+  a: Bar;
+  b: string;
+  c: number;
+}
+
+interface Bar {
+  d: boolean;
+}
+```
+
+### Limit visibility where possible
+
+Code is easier to read and understand when its scope of influence is minimized.
+A `class` with 1 public method and 4 private methods is easier to grok than a
+`class` with 5 public methods; this is due to the fact that the latter `class`
+has more potential relationships to keep in mind.
+
+In general, if a variable, function, class, or interface _can_ be made less
+visible, then it should be; variables, functions, classes, and interfaces should
+always have as little visibility as possible.
+
+**Compliant**
+
+```ts {.good}
+export class Team {
+  private relegationDate: Date | null = null;
+
+  constructor(private readonly players: readonly Player[]) {}
+
+  isRelegated(): boolean {
+    return !!this.relegationDate && this.relegationDate < new Date();
+  }
+
+  relegate(): void {
+    this.relegationDate = new Date();
+  }
+
+  override toString(): string {
+    return playersToString(this.players);
+  }
+}
+
+class Player {
+  constructor(
+    private readonly name: string,
+    private readonly number: string
+  ) {}
+
+  override toString(): string {
+    return `${this.number} ${this.name}`;
+  }
+}
+
+function playersToString(players: readonly Player[]): string {
+  return players.map((player) => player.toString()).join(", ");
+}
+```
+
+**Defiant**
+
+```ts {.bad}
+export class Team {
+  relegationDate: Date | null = null;
+
+  constructor(players: Player[]) {}
+
+  isRelegated(): bool {
+    return !!this.relegationDate && this.relegationDate < new Date();
+  }
+
+  relegate(): void {
+    this.relegationDate = new Date();
+  }
+
+  override toString(): string {
+    return playersToString(this.players);
+  }
+}
+
+export class Player {
+  constructor(
+    readonly name: string,
+    readonly number: string
+  ) {}
+
+  override toString() {
+    return `${this.number} ${this.name}`;
+  }
+}
+
+export function playersToString(players: readonly Player[]) {
+  return players.map((player) => player.toString()).join(", ");
+}
+```
+
+### Prefer absolute import paths to "upward" relative import paths
+
+When importing from another source file, relative import paths are often the
+default choice when that source file is nearby:
+
+```ts
+// Current file: @/my/project/my_file.ts
+
+import { something } from "./another/source/file";
+```
+
+However, it can hurt the general readability of your code to reference source
+files by relative import that require one or more usages of the `../`. Relative
+paths that travel "upward" from the current location in the filesystem often
+make figuring exactly _where_ the import points harder for the reader:
+
+```ts
+// Current file: @/another/project/another_file.ts
+
+import { something } from "../../my/project/another/source/file";
+```
+
+In situations such as these, absolute paths are generally easier to read, and
+should be preferred. One nice side effect of using absolute paths is that they
+make moving your own code around less disruptive to your import paths.
+
+**Compliant**
+
+```ts {.good}
+import { something } from "@/my/project/another/source/file";
+```
+
+**Defiant**
+
+```ts {.bad}
+import { something } from "../../my/project/another/source/file";
+```
+
+### Group import paths by scope
+
+Imports are easier to understand at a glance when they are broadly clustered by scope. Library imports should be grouped together. Absolute imports should be grouped together. Relative imports should be grouped together. All of these groups should have line breaks between them.
+
+The order of import groups should always be (unless there is a specific reason):
+
+1. **Library imports**\
+   For example, node modules, standard library, and mono repo imports like `"os"`, `"express"`, and `"@repo/internal"`.
+2. **Absolute imports**\
+   For example, imports with paths relative to the project root like `"@/foo/bar/baz"`.
+3. **Relative imports**\
+   For example, imports with paths relative to the current file `"./foo/bar/baz"`.
+
+**NOTE:** Please DO NOT label the import groups with comments, as it just adds noise.
+
+## Sorting/ordering
+
+### Sort A-Z by default
+
+Use A-Z ordering wherever it makes sense: class/object fields, class/object
+methods, sort-agnostic arrays, CSS properties, etc.
+
+**Compliant**
+
+```ts {.good}
+const myObj = {
+  bar: "one",
+  baz: "two",
+  foo: "three",
+};
+
+const everythingIOwn = ["hat", "laptop", "pants"];
+```
+
+**Defiant**
+
+```ts {.bad}
+const myObj = {
+  foo: "one",
+  bar: "two",
+  baz: "three",
+};
+
+const everythingIOwn = ["hat", "pants", "laptop"];
+```
+
+### Chunk code by importance of visibility
+
+Readers are generally most concerned with _using_ your class, so put the most
+relevant bits up front. This rule takes precedence over A-Z sorting, but all
+items within each visibility group should be sorted A-Z.
+
+This generally translates to the following implementation basics:
+
+1.  Public, then private static **fields**, with each item in the group sorted
+    A-Z.
+2.  Public, then private static **methods**, with each item in the group sorted
+    A-Z.
+3.  Public, protected, then private **fields**, with each item in the group
+    sorted A-Z.
+4.  Constructor and factories.
+5.  Public, protected, then private **methods**, with each item in the group
+    sorted A-Z.
+6.  Non-exported helper functions go last, with each function sorted A-Z, if
+    possible.
+
+Other logical "chunks" can be made too, so long as the other sorting rules are
+also preserved.
+
+**Compliant**
+
+```ts {.good}
+class MyClass {
+  static propertyE = "e";
+  static propertyF = "f";
+
+  static methodH() {}
+
+  propertyA = "a";
+  propertyD = "d";
+
+  protected propertyC = "c";
+  private propertyB = "b";
+  constructor() {
+    this.methodC();
+  }
+
+  methodF() {}
+  methodG() {}
+  protected methodA() {}
+  protected methodD() {}
+  private methodC() {}
+  private methodE() {}
+}
+
+function helperFnA() {}
+function helperFnB() {}
+```
+
+**Defiant**
+
+```ts {.bad}
+function helperFnA() {}
+function helperFnB() {}
+
+class MyClass {
+  constructor() {
+    this.methodC();
+  }
+  propertyA = "a";
+  private propertyB = "b";
+  protected propertyC = "c";
+  propertyD = "d";
+  static propertyE = "e";
+  static propertyF = "f";
+
+  protected methodA() {}
+  private methodC() {}
+  protected methodD() {}
+  private methodE() {}
+  methodF() {}
+  methodG() {}
+  static methodH() {}
+}
+```
+
+## Comments
+
+1.  **At a minimum, use doc comments for all exported/public code** \
+    Anything that will be integrated into other works needs to be well
+    understood by the folks doing the integration. As such, all public members,
+    the classes, functions, and variables exposed as part of your code's "API"
+    so-to-speak, must be thoroughly explained. Keep in mind that this
+    stipulation should not prevent you from also documenting non-public members
+    where necessary.
+2.  **Use proper English punctuation for most comments** \
+    Start sentences with a capital letter, end with a period. Standalone line
+    comments should similarly use full sentences. Inline comments that are mixed
+    into logic or form segments of documents e.g. `@param` need NOT be full sentences and should NOT end with punctuation
+3.  **Comments should provide more context to the user than the code alone can**
+    \
+    Use comments to add context that isn't already provided by the names of your
+    variables, methods, and classes. Comments should be additive, not redundant.
+    If there isn't any remaining ambiguity in the "what" or "how" categories of
+    your code, add comments that elaborate on the "why" of it all.
+4.  **Actively avoid obvious line comments**\
+    Avoid line comments that rephrase the code beneath. For example,
+    ```ts {}
+    // Call the service.
+    service.call();
+    ```
+
+**Compliant**
+
+```ts {.good}
+/** Product that contains holes for a user's legs. */
+export interface Pant {
+  /** What `PantKind` this pant product is. */
+  kind: PantKind;
+  /** ID of this product in the pants database. */
+  productId: string;
+}
+
+/** Enumeration of all pant kinds sold. */
+export enum PantKind {
+  /** Kind of pant that extends all the way to the ankle. */
+  LONG = "LONG",
+  /** Kind of pant that extends to the knee. */
+  SHORT = "SHORT",
+  /** Kind of pant that extends only to the middle of the thigh. */
+  V_SHORT = "V_SHORT",
+}
+```
+
+```ts {.good}
+/**
+ * Couples each of the given `strings` with their respective lengths.
+ *
+ * We use `Array` tuples (`['xyz', 3]`) instead of objects
+ * (`{string: 'xyz', length: 3}`) because a method that depends on this
+ * function, `iOnlyTakeArrays(...)`, expects an `Array` of `Array` instances.
+ */
+function withLength(
+  strings: readonly string[]
+): ReadonlyArray<[string, number]> {
+  return (
+    strings
+      // We don't tolerate empty strings here because the resulting tuples
+      // cannot contain zeroes (see: go/some-reasoning-here).
+      .filter((string) => !!string)
+      .map((string) => [string, string.length])
+  );
+}
+```
+
+**Defiant**
+
+```ts {.bad}
+export interface Pant {
+  productId: string;
+  kind: PantKind;
+}
+
+/** pants we sell */
+export enum PantKind {
+  /** long pants */
+  LONG = "LONG",
+  /** short pants */
+  SHORT = "SHORT",
+  /** very short pants */
+  V_SHORT = "V_SHORT",
+}
+```
+
+```ts {.bad}
+/**
+ * Adds length to an array of strings.
+ *
+ * @param strings an `Array` of strings
+ * @return an array of string-length tuples
+ */
+function withLength(
+  strings: readonly string[]
+): ReadonlyArray<[string, number]> {
+  return (
+    strings
+      // Truthy strings only.
+      .filter((string) => !!string)
+      .map((string) => [string, string.length])
+  );
+}
+```
+
+## TypeScript
+
+### Prefer `unknown` to `any`
+
+In our TypeScript style guide, we strongly advocate for using `unknown` over `any` when a variable's type is indeterminate. Unlike `any`, which disables type checking and can lead to runtime errors by allowing arbitrary operations, `unknown` maintains type safety by requiring explicit type checks (e.g., using `as`, `typeof` or `instanceof`) or type assertions before any operations can be performed on the value. This forces developers to consciously handle the type, thereby catching potential errors at compile time, signaling clear intent about the variable's uncertain nature, and ultimately leading to more robust, maintainable, and refactor-friendly code, especially when dealing with external data sources or dynamic content.

@@ -43,7 +43,7 @@ async function main() {
       // Connect and wait for the session to end (resolve on clean close, reject on error/unclean close)
       await connectWebSocket();
       console.log(
-        "WebSocket session ended cleanly. Resetting backoff and reconnecting shortly..."
+        "WebSocket session ended cleanly. Resetting backoff and reconnecting shortly...",
       );
       // Reset backoff after a successful connection and clean closure
       currentBackoff = INITIAL_BACKOFF_MS;
@@ -60,7 +60,7 @@ async function main() {
       // This helps prevent overwhelming the server during reconnection attempts
       currentBackoff = Math.min(
         currentBackoff * BACKOFF_FACTOR,
-        MAX_BACKOFF_MS
+        MAX_BACKOFF_MS,
       );
     }
   }
@@ -97,7 +97,7 @@ main().catch((error) => {
 // socket.send("Another message from index.ts");
 
 console.log(
-  "Courier application setup complete. Waiting for WebSocket events..."
+  "Courier application setup complete. Waiting for WebSocket events...",
 );
 
 // Note: The process needs to be kept alive for WebSocket communication.

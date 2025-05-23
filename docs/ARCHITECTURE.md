@@ -5,23 +5,27 @@
 Remembot is built as a modern, scalable application with the following key components:
 
 ### 1. iMessage Integration Layer
+
 - Handles communication with Apple's Messages framework
 - Processes incoming messages and commands
 - Manages message formatting and responses
 - Implements natural language processing for task creation
 
 ### 2. Backend Services
+
 - RESTful API server built with Node.js
 - Task management and storage
 - User authentication and session management
 - Reminder scheduling system
 
 ### 3. Database Layer
+
 - PostgreSQL for persistent storage
 - Redis for caching and session management
 - Task and user data models
 
 ### 4. External Services Integration
+
 - Apple Push Notification Service (APNs) for reminders
 - Natural Language Processing (NLP) services
 - Cloud storage for media attachments
@@ -29,11 +33,13 @@ Remembot is built as a modern, scalable application with the following key compo
 ## Data Flow
 
 1. **Message Reception**
+
    - User sends message to Remembot
    - iMessage Integration Layer receives and parses message
    - NLP processes message intent
 
 2. **Task Processing**
+
    - Backend validates and processes task
    - Database operations are performed
    - Response is formatted
@@ -76,4 +82,4 @@ Remembot is built as a modern, scalable application with the following key compo
 - Containerized services
 - Kubernetes orchestration
 - Cloud infrastructure
-- Backup and recovery procedures 
+- Backup and recovery procedures

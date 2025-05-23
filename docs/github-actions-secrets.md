@@ -8,15 +8,15 @@ This document outlines all the secrets required for GitHub Actions workflows in 
 
 These secrets contain the kubeconfig files for different deployment targets. The secret names are constructed using the format `{TARGET}_KUBECONFIG` where `{TARGET}` is the deployment target name in uppercase.
 
-| Secret Name | Description | Required For |
-|-------------|-------------|--------------|
-| `RHUIDEAN_KUBECONFIG` | Kubeconfig for the rhuidean (Ubuntu) server | courier app deployment |
-| `HOMEMAC_KUBECONFIG` | Kubeconfig for the homemac (macOS) server | web and api apps deployment |
+| Secret Name           | Description                                 | Required For                |
+| --------------------- | ------------------------------------------- | --------------------------- |
+| `RHUIDEAN_KUBECONFIG` | Kubeconfig for the rhuidean (Ubuntu) server | courier app deployment      |
+| `HOMEMAC_KUBECONFIG`  | Kubeconfig for the homemac (macOS) server   | web and api apps deployment |
 
 ### Container Registry Secrets
 
-| Secret Name | Description | Required For |
-|-------------|-------------|--------------|
+| Secret Name    | Description                              | Required For                      |
+| -------------- | ---------------------------------------- | --------------------------------- |
 | `GITHUB_TOKEN` | Automatically provided by GitHub Actions | Container registry authentication |
 
 ## Setting Up Secrets
@@ -31,6 +31,7 @@ These secrets contain the kubeconfig files for different deployment targets. The
 For each deployment target:
 
 1. Get the kubeconfig file from your k3s cluster:
+
    ```bash
    # On the target server
    cat /etc/rancher/k3s/k3s.yaml
@@ -52,6 +53,7 @@ Each app in the monorepo has a `k8s/target.yaml` file that specifies which deplo
    - Uses the corresponding secret for deployment
 
 For example:
+
 - If `apps/courier/k8s/target.yaml` contains `rhuidean`, the workflow will use `RHUIDEAN_KUBECONFIG`
 - If `apps/web/k8s/target.yaml` contains `homemac`, the workflow will use `HOMEMAC_KUBECONFIG`
 
@@ -70,4 +72,4 @@ If deployments fail due to secret-related issues:
 2. Check that the secret name matches exactly (case-sensitive)
 3. Ensure the kubeconfig file is valid and has the correct permissions
 4. Verify the kubeconfig has access to the correct namespace
-5. Confirm that the target name in `target.yaml` matches the expected deployment target 
+5. Confirm that the target name in `target.yaml` matches the expected deployment target

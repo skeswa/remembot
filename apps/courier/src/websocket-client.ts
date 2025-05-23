@@ -56,4 +56,4 @@ function connectWebSocket(): Promise<void> {
 
 // Removed the automatic execution and console log about Ctrl+C
 
-export { connectWebSocket }; 
+export { connectWebSocket };

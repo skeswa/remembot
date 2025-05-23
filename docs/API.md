@@ -13,6 +13,7 @@ Authorization: Bearer <your-token>
 ### Tasks
 
 #### Create Task
+
 ```http
 POST /api/tasks
 Content-Type: application/json
@@ -26,6 +27,7 @@ Content-Type: application/json
 ```
 
 #### Get Tasks
+
 ```http
 GET /api/tasks
 Query Parameters:
@@ -35,6 +37,7 @@ Query Parameters:
 ```
 
 #### Update Task
+
 ```http
 PUT /api/tasks/:taskId
 Content-Type: application/json
@@ -46,6 +49,7 @@ Content-Type: application/json
 ```
 
 #### Delete Task
+
 ```http
 DELETE /api/tasks/:taskId
 ```
@@ -53,6 +57,7 @@ DELETE /api/tasks/:taskId
 ### Users
 
 #### Register User
+
 ```http
 POST /api/users/register
 Content-Type: application/json
@@ -64,11 +69,13 @@ Content-Type: application/json
 ```
 
 #### Get User Profile
+
 ```http
 GET /api/users/profile
 ```
 
 #### Update User Settings
+
 ```http
 PUT /api/users/settings
 Content-Type: application/json
@@ -84,6 +91,7 @@ Content-Type: application/json
 ### Reminders
 
 #### Create Reminder
+
 ```http
 POST /api/reminders
 Content-Type: application/json
@@ -96,6 +104,7 @@ Content-Type: application/json
 ```
 
 #### Get Reminders
+
 ```http
 GET /api/reminders
 Query Parameters:
@@ -117,6 +126,7 @@ All error responses follow this format:
 ```
 
 Common error codes:
+
 - `INVALID_REQUEST`: The request was malformed
 - `UNAUTHORIZED`: Authentication failed
 - `FORBIDDEN`: Insufficient permissions
@@ -135,6 +145,7 @@ Common error codes:
 ## Webhooks
 
 ### Task Created
+
 ```json
 {
   "event": "task.created",
@@ -147,6 +158,7 @@ Common error codes:
 ```
 
 ### Reminder Triggered
+
 ```json
 {
   "event": "reminder.triggered",
@@ -156,4 +168,4 @@ Common error codes:
     "triggeredAt": "2024-03-20T14:00:00Z"
   }
 }
-``` 
+```

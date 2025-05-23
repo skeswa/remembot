@@ -80,6 +80,7 @@ remembot/
      - Check "Allow GitHub Actions to create and approve pull requests"
 
 2. **Branch Protection**
+
    - Go to Settings > Branches
    - Add a rule for the `main` branch
    - Enable required status checks

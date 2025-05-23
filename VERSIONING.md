@@ -11,6 +11,7 @@ bun changeset
 ```
 
 This interactive command will:
+
 1. Ask you which packages have changed (select with space, confirm with enter)
 2. Ask you what type of change it is for each package:
    - `patch`: Bug fixes and minor changes (0.0.x)
@@ -23,12 +24,14 @@ A markdown file will be created in the `.changeset` directory. Commit this file 
 ## Example Changeset Workflow
 
 1. Make your changes to the code
+
    ```bash
    # Make changes to apps/api
    vim apps/api/src/index.ts
    ```
 
 2. Create a changeset
+
    ```bash
    bun changeset
    ```
@@ -80,4 +83,4 @@ If Package A depends on Package B and Package B gets a version bump, Package A w
 
 ### Skipping Changesets
 
-For changes that don't need a version bump (e.g., documentation, CI changes), you don't need to create a changeset. 
+For changes that don't need a version bump (e.g., documentation, CI changes), you don't need to create a changeset.

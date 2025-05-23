@@ -5,7 +5,7 @@
     "build": "turbo run build",
     "check-types": "turbo run check-types",
     "dev": "turbo run dev",
-    "format": "prettier --write \"**/*.{ts,tsx,md}\"",
+    "fmt": "prettier --write \"**/*.{ts,tsx,md}\"",
     "lint": "turbo run lint",
     "postinstall": "find apps -name '.env.example' -exec sh -c 'dir=$(dirname \"{}\"); [ ! -f \"$dir/.env\" ] && cp \"{}\" \"$dir/.env\"' \\;",
     "release": "bun run scripts/release.ts"

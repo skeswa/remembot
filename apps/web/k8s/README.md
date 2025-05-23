@@ -24,4 +24,4 @@ The deployment uses the following environment variables:
 - `NODE_ENV`: Set to "production" in the deployment
 - Other configuration variables specific to the web app
 
-Additional configuration can be added to the `deployment.yaml` file as needed. 
+Additional configuration can be added to the `deployment.yaml` file as needed.

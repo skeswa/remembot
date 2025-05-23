@@ -5,26 +5,31 @@
 ### Environment Setup
 
 1. Install required tools:
+
    - Bun 1.0+
    - Git
 
 2. Clone the repository:
+
 ```bash
 git clone https://github.com/skeswa/remembot.git
 cd remembot
 ```
 
 3. Install dependencies:
+
 ```bash
 bun install
 ```
 
 4. Set up environment variables:
+
 ```bash
 cp .env.example .env
 ```
 
 5. Start development services:
+
 ```bash
 bun dev
 ```
@@ -50,17 +55,20 @@ remembot/
 ### Development Workflow
 
 1. Create a new branch for your feature:
+
 ```bash
 git checkout -b feature/your-feature-name
 ```
 
 2. Make your changes and commit them:
+
 ```bash
 git add .
 git commit -m "feat: your feature description"
 ```
 
 3. Push your changes:
+
 ```bash
 git push origin feature/your-feature-name
 ```
@@ -72,25 +80,30 @@ git push origin feature/your-feature-name
 This project uses [Changesets](https://github.com/changesets/changesets) for versioning and changelog management. The changesets bot will automatically check your PRs for changesets.
 
 1. **Creating a Changeset**
+
    ```bash
    # Create a new changeset
    bun changeset
    ```
+
    This will prompt you to:
+
    - Select the type of change (patch, minor, major)
    - Write a description of the changes
    - Select the affected packages
 
 2. **Changeset Format**
+
    ```markdown
    ---
-   'package-name': patch|minor|major
+   "package-name": patch|minor|major
    ---
 
    Description of changes
    ```
 
 3. **Changesets Bot**
+
    - The bot will automatically comment on PRs that need changesets
    - It provides a direct link to create a changeset from the PR
    - The bot will update its comments when PRs are modified
@@ -163,6 +176,7 @@ bun format
 ### Local Development
 
 1. Start the development server with debugging:
+
 ```bash
 bun dev:debug
 ```
@@ -194,11 +208,13 @@ bun dev:debug
 ### Common Issues
 
 1. **Database Connection Issues**
+
    - Check database service status
    - Verify environment variables
    - Check database logs
 
 2. **Build Failures**
+
    - Clear node_modules and reinstall
    - Check TypeScript errors
    - Verify dependency versions
@@ -222,4 +238,4 @@ bun dev:debug
 - [TypeScript Documentation](https://www.typescriptlang.org/docs/)
 - [Bun Documentation](https://bun.sh/docs)
 - [Turborepo Documentation](https://turbo.build/repo/docs)
-- [PostgreSQL Documentation](https://www.postgresql.org/docs/) 
+- [PostgreSQL Documentation](https://www.postgresql.org/docs/)

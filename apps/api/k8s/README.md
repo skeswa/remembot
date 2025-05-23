@@ -24,4 +24,4 @@ The deployment uses the following environment variables:
 - `NODE_ENV`: Set to "production" in the deployment
 - `COURIER_URL`: URL to the courier service
 
-Additional configuration can be added to the `deployment.yaml` file as needed. 
+Additional configuration can be added to the `deployment.yaml` file as needed.

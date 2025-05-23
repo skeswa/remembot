@@ -138,7 +138,7 @@ function main() {
   if (changedPackages.length < 1) {
     console.log(
       "No packages found with different versions " +
-        "between k8s and package.json."
+        "between k8s and package.json.",
     );
 
     return;

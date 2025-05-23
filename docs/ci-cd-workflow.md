@@ -70,6 +70,7 @@ Follow the PR template and ensure you've checked the "Changeset" checkboxes.
 ### 4. CI Validation
 
 GitHub Actions will automatically:
+
 - Check that a changeset is present for affected packages
 - Run type checking, linting, and build steps
 - Run tests
@@ -81,10 +82,12 @@ Fix any issues that arise before merging.
 When the PR is approved and all checks pass, merge it to `main`.
 
 The Changesets GitHub Action will:
+
 1. Create a new "Version Packages" PR that updates all package versions
 2. Generate changelogs based on your changeset descriptions
 
 When the Version Packages PR is merged:
+
 - GitHub Actions will build Docker images for affected apps
 - Images will be tagged with the commit SHA and pushed to GHCR
 - Kubernetes manifests will be updated with the new image tags
@@ -156,4 +159,4 @@ If you need to deploy Kubernetes manifests manually:
 kubectl apply -f apps/api/k8s/
 kubectl apply -f apps/web/k8s/
 kubectl apply -f apps/courier/k8s/
-``` 
+```

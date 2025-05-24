@@ -16,25 +16,52 @@ import { execSync } from "child_process";
 import * as fs from "fs";
 import * as path from "path";
 import * as yaml from "js-yaml";
+import glob from "fast-glob";
 
+/**
+ * Information about a package or app in the monorepo.
+ */
 interface PackageInfo {
-  name: string;
-  version: string;
-  publishedVersion?: string;
+  /** Name of the package or app. */
+  readonly name: string;
+  /** Version in package.json. */
+  readonly version: string;
+  /** Version deployed (from k8s) or published, if available. */
+  readonly publishedVersion?: string;
 }
 
 /**
- * Extracts version from a k8s deployment file
+ * Reads package.json and returns its parsed content.
+ *
+ * @param packageJsonPath Path to the package.json file
+ * @returns Parsed package.json or undefined if not found
+ */
+function getPackageJson(
+  packageJsonPath: string,
+): { name: string; version: string; publishedVersion?: string } | undefined {
+  try {
+    const packageJsonContent = fs.readFileSync(packageJsonPath, "utf8");
+    return JSON.parse(packageJsonContent);
+  } catch (error) {
+    console.error(`Error reading package.json ${packageJsonPath}:`, error);
+    return undefined;
+  }
+}
+
+/**
+ * Extracts version from a k8s deployment file.
+ *
  * @param deploymentPath Path to the k8s deployment file
  * @returns The version from the image tag or undefined if not found
  */
 function getK8sVersion(deploymentPath: string): string | undefined {
   try {
     const deploymentContent = fs.readFileSync(deploymentPath, "utf8");
-    const deployment = yaml.load(deploymentContent) as any;
+    const deployment = yaml.load(deploymentContent) as unknown;
 
     // Handle different possible container structures
-    const containers = deployment?.spec?.template?.spec?.containers || [];
+    const containers =
+      (deployment as any)?.spec?.template?.spec?.containers || [];
     if (!Array.isArray(containers) || containers.length === 0) {
       console.warn(`No containers found in ${deploymentPath}`);
       return undefined;
@@ -64,24 +91,67 @@ function getK8sVersion(deploymentPath: string): string | undefined {
 }
 
 /**
- * Reads package.json
- * @param packageJsonPath Path to the package.json file
- * @returns Parsed package.json or undefined if not found
+ * Gets metadata about all of the apps in the monorepo.
+ *
+ * @returns package information for apps
  */
-function getPackageJson(packageJsonPath: string):
-  | {
-      name: string;
-      version: string;
-      publishedVersion?: string;
+function summarizeApps(): PackageInfo[] {
+  const apps: PackageInfo[] = [];
+  const deploymentPaths = glob.sync("apps/*/k8s/deployment.yaml");
+
+  for (const deploymentPath of deploymentPaths) {
+    // Get the app directory (e.g., apps/api from apps/api/k8s/deployment.yaml)
+    const appDir = path.dirname(path.dirname(deploymentPath));
+    const packageJson = getPackageJson(path.join(appDir, "package.json"));
+
+    if (!packageJson) {
+      console.warn(`No package.json found for ${appDir}`);
+      continue;
     }
-  | undefined {
-  try {
-    const packageJsonContent = fs.readFileSync(packageJsonPath, "utf8");
-    return JSON.parse(packageJsonContent);
-  } catch (error) {
-    console.error(`Error reading package.json ${packageJsonPath}:`, error);
-    return undefined;
+
+    const k8sVersion = getK8sVersion(deploymentPath);
+    const packageVersion = packageJson.version;
+
+    apps.push({
+      name: packageJson.name,
+      version: packageVersion,
+      publishedVersion: k8sVersion,
+    });
   }
+
+  return apps;
+}
+
+/**
+ * Gets metadata about all of the packages in the monorepo.
+ *
+ * @returns package information for packages
+ */
+function summarizePackages(): PackageInfo[] {
+  const packages: PackageInfo[] = [];
+  const packageJsonPaths = glob.sync("packages/*/package.json");
+
+  for (const packageJsonPath of packageJsonPaths) {
+    try {
+      const packageJson = getPackageJson(packageJsonPath);
+      if (!packageJson) {
+        throw new Error(
+          `Package.json ${packageJsonPath} is invalid or missing`,
+        );
+      }
+      const { name, version, publishedVersion } = packageJson;
+      packages.push({
+        name,
+        version,
+        publishedVersion,
+      });
+    } catch (error) {
+      console.warn(`Could not parse ${packageJsonPath}:`, error);
+      continue;
+    }
+  }
+
+  return packages;
 }
 
 /**
@@ -100,82 +170,11 @@ function getChangedAppsAndPackages(): PackageInfo[] {
 }
 
 /**
- * Gets metadata about all of the packages in the monorepo
- *
- * @returns package information for packages
- */
-function summarizePackages(): PackageInfo[] {
-  const packages: PackageInfo[] = [];
-
-  const packageJsonPaths = fs.globSync("packages/*/package.json");
-
-  for (const packageJsonPath of packageJsonPaths) {
-    try {
-      const packageJson = getPackageJson(packageJsonPath);
-
-      if (!packageJson) {
-        throw new Error(
-          `Package.json ${packageJsonPath} is invalid or missing`,
-        );
-      }
-
-      const { name, version, publishedVersion } = packageJson;
-
-      packages.push({
-        name,
-        version,
-        publishedVersion,
-      });
-    } catch (error) {
-      console.warn(`Could not parse ${packageJsonPath}:`, error);
-
-      continue;
-    }
-  }
-
-  return packages;
-}
-
-/**
- * Gets metadata about all of the apps in the monorepo
- *
- * @returns package information for apps
- */
-function summarizeApps(): PackageInfo[] {
-  const apps: PackageInfo[] = [];
-
-  const deploymentPaths = fs.globSync("apps/*/k8s/deployment.yaml");
-
-  for (const deploymentPath of deploymentPaths) {
-    // Get the app directory (e.g., apps/api from apps/api/k8s/deployment.yaml)
-    const appDir = path.dirname(path.dirname(deploymentPath));
-    const packageJson = getPackageJson(path.join(appDir, "package.json"));
-
-    if (!packageJson) {
-      console.warn(`No package.json found for ${appDir}`);
-
-      continue;
-    }
-
-    const k8sVersion = getK8sVersion(deploymentPath);
-    const packageVersion = packageJson.version;
-
-    apps.push({
-      name: packageJson.name,
-      version: packageVersion,
-      publishedVersion: k8sVersion,
-    });
-  }
-
-  return apps;
-}
-
-/**
  * Main function that processes changed packages and creates git tags.
  * For each changed package, creates and pushes a git tag in the format
  * ${packageName}@${version}. Exits with error if tag creation fails.
  */
-function main() {
+function main(): void {
   const changedAppsAndPackages = getChangedAppsAndPackages();
 
   if (changedAppsAndPackages.length < 1) {
@@ -183,7 +182,6 @@ function main() {
       "No packages found with different versions " +
         "between k8s and package.json.",
     );
-
     return;
   }
 

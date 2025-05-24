@@ -75,7 +75,7 @@ describe("message utility - listen and stopListening", () => {
     // Wait for the initial fetch to complete
     await new Promise((resolve) => setTimeout(resolve, 10));
     expect(queryDbMock.calls[0]?.[0]).toBe(
-      "SELECT MAX(ROWID) as max_id FROM message;"
+      "SELECT MAX(ROWID) as max_id FROM message;",
     );
   });
 
@@ -201,7 +201,7 @@ describe("message utility - listen and stopListening", () => {
     newEmitter.on("error", mockErrorHandler);
     await new Promise((resolve) => setTimeout(resolve, 15));
     expect(mockErrorHandler.calls[0]?.[0]?.message).toContain(
-      "Failed to initialize message listener"
+      "Failed to initialize message listener",
     );
     newEmitter.removeAllListeners();
   });

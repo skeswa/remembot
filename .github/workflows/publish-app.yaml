@@ -1,7 +1,7 @@
 # Reusable workflow that builds and pushes a specific app to the container
 # registry and then subsequently updates the k8s deployment configuration.
 #
-# This workflow is designed to be called by the `release-and-publish.yaml`
+# This workflow is designed to be called by the `release.yaml`
 # workflow.
 
 name: Publish App
@@ -140,10 +140,10 @@ jobs:
 
           echo "Updated ${{ inputs.app_name }} k8s deployment to use image: ${BASE_IMAGE}:${VERSION}"
 
-      # Push the updated Kubernetes manifest back to the repository.
-      # This step includes retry logic to handle concurrent updates.
-      - name: Push k8s changes
-        id: push-k8s
+      # Push the updates back to the remote. This step includes retry logic to
+      # handle concurrent updates.
+      - name: Push changes
+        id: push-changes
         run: |
           # Get the current branch name (e.g., main, develop).
           BRANCH_NAME="${{ github.ref_name }}"

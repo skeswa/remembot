@@ -3,7 +3,7 @@
 #
 # This workflow is purely designed to be triggered by:
 # - `release.yaml` following the creation of a new release
-# - The `release-and-publish.yaml` workflow when a release is created
+# - The `release.yaml` workflow when a release is created
 
 name: Publish Drifted Apps
 

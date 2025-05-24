@@ -73,3 +73,12 @@ jobs:
     if: ${{ needs.release.outputs.should_publish == 'true' }}
     uses: ./.github/workflows/publish-drifted-apps.yaml
     secrets: inherit # Necessary for accessing the KUBECONFIG etc.
+
+  # Publish packages where necessary.
+  publish-drifted-packages:
+    name: Publish drifted packages
+    needs: release
+    # Only run this job if there are apps to deploy.
+    if: ${{ needs.release.outputs.should_publish == 'true' }}
+    uses: ./.github/workflows/publish-drifted-packages.yaml
+    secrets: inherit # Necessary for accessing the KUBECONFIG etc.

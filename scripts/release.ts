@@ -20,7 +20,7 @@ import * as yaml from "js-yaml";
 interface PackageInfo {
   name: string;
   version: string;
-  k8sVersion?: string;
+  publishedVersion?: string;
 }
 
 /**
@@ -64,15 +64,20 @@ function getK8sVersion(deploymentPath: string): string | undefined {
 }
 
 /**
- * Gets package version from package.json
+ * Reads package.json
  * @param packageJsonPath Path to the package.json file
- * @returns The version from package.json or undefined if not found
+ * @returns Parsed package.json or undefined if not found
  */
-function getPackageVersion(packageJsonPath: string): string | undefined {
+function getPackageJson(packageJsonPath: string):
+  | {
+      name: string;
+      version: string;
+      publishedVersion?: string;
+    }
+  | undefined {
   try {
     const packageJsonContent = fs.readFileSync(packageJsonPath, "utf8");
-    const packageJson = JSON.parse(packageJsonContent);
-    return packageJson.version;
+    return JSON.parse(packageJsonContent);
   } catch (error) {
     console.error(`Error reading package.json ${packageJsonPath}:`, error);
     return undefined;
@@ -80,51 +85,89 @@ function getPackageVersion(packageJsonPath: string): string | undefined {
 }
 
 /**
- * Finds all packages and compares their versions between k8s deployments and
- * package.json
+ * Gets metadata about all of the apps and packages in the monorepo that have
+ * differences between their current and published versions.
  *
- * @returns Array of package information for packages with different versions
+ * @returns package information for changed apps and packages
  */
-function getChangedPackages(): PackageInfo[] {
-  const changedPackages: PackageInfo[] = [];
+function getChangedAppsAndPackages(): PackageInfo[] {
+  const apps = summarizeApps();
+  const packages = summarizePackages();
 
-  // Find all k8s deployment files
-  const k8sDeployments = execSync("find . -path '*/k8s/deployment.yaml'", {
-    encoding: "utf-8",
-  })
-    .trim()
-    .split("\n");
+  return [...apps, ...packages]
+    .filter(({ publishedVersion, version }) => publishedVersion !== version)
+    .sort((a, b) => a.name.localeCompare(b.name));
+}
 
-  for (const deploymentPath of k8sDeployments) {
+/**
+ * Gets metadata about all of the packages in the monorepo
+ *
+ * @returns package information for packages
+ */
+function summarizePackages(): PackageInfo[] {
+  const packages: PackageInfo[] = [];
+
+  const packageJsonPaths = fs.globSync("packages/*/package.json");
+
+  for (const packageJsonPath of packageJsonPaths) {
+    try {
+      const packageJson = getPackageJson(packageJsonPath);
+
+      if (!packageJson) {
+        throw new Error(
+          `Package.json ${packageJsonPath} is invalid or missing`,
+        );
+      }
+
+      const { name, version, publishedVersion } = packageJson;
+
+      packages.push({
+        name,
+        version,
+        publishedVersion,
+      });
+    } catch (error) {
+      console.warn(`Could not parse ${packageJsonPath}:`, error);
+
+      continue;
+    }
+  }
+
+  return packages;
+}
+
+/**
+ * Gets metadata about all of the apps in the monorepo
+ *
+ * @returns package information for apps
+ */
+function summarizeApps(): PackageInfo[] {
+  const apps: PackageInfo[] = [];
+
+  const deploymentPaths = fs.globSync("apps/*/k8s/deployment.yaml");
+
+  for (const deploymentPath of deploymentPaths) {
     // Get the app directory (e.g., apps/api from apps/api/k8s/deployment.yaml)
     const appDir = path.dirname(path.dirname(deploymentPath));
-    const packageJsonPath = path.join(appDir, "package.json");
+    const packageJson = getPackageJson(path.join(appDir, "package.json"));
 
-    if (!fs.existsSync(packageJsonPath)) {
+    if (!packageJson) {
       console.warn(`No package.json found for ${appDir}`);
+
       continue;
     }
 
     const k8sVersion = getK8sVersion(deploymentPath);
-    const packageVersion = getPackageVersion(packageJsonPath);
+    const packageVersion = packageJson.version;
 
-    if (!k8sVersion || !packageVersion) {
-      console.warn(`Could not determine versions for ${appDir}`);
-      continue;
-    }
-
-    if (k8sVersion !== packageVersion) {
-      const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, "utf8"));
-      changedPackages.push({
-        name: packageJson.name,
-        version: packageVersion,
-        k8sVersion: k8sVersion,
-      });
-    }
+    apps.push({
+      name: packageJson.name,
+      version: packageVersion,
+      publishedVersion: k8sVersion,
+    });
   }
 
-  // Sort for consistent output
-  return changedPackages.sort((a, b) => a.name.localeCompare(b.name));
+  return apps;
 }
 
 /**
@@ -133,9 +176,9 @@ function getChangedPackages(): PackageInfo[] {
  * ${packageName}@${version}. Exits with error if tag creation fails.
  */
 function main() {
-  const changedPackages = getChangedPackages();
+  const changedAppsAndPackages = getChangedAppsAndPackages();
 
-  if (changedPackages.length < 1) {
+  if (changedAppsAndPackages.length < 1) {
     console.log(
       "No packages found with different versions " +
         "between k8s and package.json.",
@@ -145,7 +188,7 @@ function main() {
   }
 
   // Create and push tags for each changed package
-  for (const pkg of changedPackages) {
+  for (const pkg of changedAppsAndPackages) {
     const tagName = `${pkg.name}@${pkg.version}`;
 
     try {

@@ -22,128 +22,132 @@ cd remembot
 bun install
 ```
 
-4. Set up environment variables:
+4. Set up environment variables etc.:
 
 ```bash
-cp .env.example .env
+punt postinstall
 ```
 
-5. Start development services:
+5. Start development apps:
 
 ```bash
 bun dev
 ```
 
-### Monorepo Structure
+## Repo Setup
 
-This project uses Turborepo to manage the monorepo. The workspace is organized as follows:
+### GitHub Actions Secrets
 
-```
-remembot/
-├── apps/
-│   ├── api/          # Backend API service
-│   └── imessage/     # iMessage integration service
-├── packages/
-│   ├── config/       # Shared configuration
-│   ├── database/     # Database models and migrations
-│   ├── types/        # Shared TypeScript types
-│   └── utils/        # Shared utilities
-├── docs/             # Documentation
-└── scripts/          # Build and deployment scripts
-```
+This document outlines all the secrets required for GitHub Actions workflows in this repository.
 
-### Development Workflow
+#### Deployment Secrets
 
-1. Create a new branch for your feature:
+##### Kubeconfig Secrets
+
+These secrets contain the kubeconfig files for different deployment targets. The secret names are constructed using the format `{TARGET}_KUBECONFIG` where `{TARGET}` is the deployment target name in uppercase.
+
+| Secret Name           | Description                                 | Required For                |
+| --------------------- | ------------------------------------------- | --------------------------- |
+| `RHUIDEAN_KUBECONFIG` | Kubeconfig for the rhuidean (Ubuntu) server | courier app deployment      |
+| `HOMEMAC_KUBECONFIG`  | Kubeconfig for the homemac (macOS) server   | web and api apps deployment |
+
+##### Container Registry Secrets
+
+| Secret Name    | Description                              | Required For                      |
+| -------------- | ---------------------------------------- | --------------------------------- |
+| `GITHUB_TOKEN` | Automatically provided by GitHub Actions | Container registry authentication |
+
+#### Setting Up Secrets
+
+1. Go to your GitHub repository
+2. Navigate to Settings > Secrets and variables > Actions
+3. Click "New repository secret"
+4. Add each secret with its corresponding value
+
+##### Kubeconfig Setup
+
+For each deployment target:
+
+1. Get the kubeconfig file from your k3s cluster:
+
+   ```bash
+   # On the target server
+   cat /etc/rancher/k3s/k3s.yaml
+   ```
+
+2. Create a new secret in GitHub:
+   - Name: `{TARGET}_KUBECONFIG` (e.g., `RHUIDEAN_KUBECONFIG`)
+   - Value: Paste the entire contents of the kubeconfig file
+
+###### Relationship with target.yaml
+
+Each app in the monorepo has a `k8s/target.yaml` file that specifies which deployment target it should be deployed to. The workflow uses this file to determine which kubeconfig secret to use:
+
+1. The `target.yaml` file contains a single line with the target name (e.g., `rhuidean` or `homemac`)
+2. During deployment, the workflow:
+   - Reads the target from `apps/{app}/k8s/target.yaml`
+   - Converts the target name to uppercase
+   - Uses it to construct the secret name: `{TARGET}_KUBECONFIG`
+   - Uses the corresponding secret for deployment
+
+For example:
+
+- If `apps/courier/k8s/target.yaml` contains `rhuidean`, the workflow will use `RHUIDEAN_KUBECONFIG`
+- If `apps/web/k8s/target.yaml` contains `homemac`, the workflow will use `HOMEMAC_KUBECONFIG`
+
+## Development Workflow
+
+### Overview
+
+1. Developers make changes to the codebase on feature branches
+2. When the feature is ready for review, developers create a changeset to document their changes
+3. GitHub Actions validates the PR, ensuring changesets are present and that the build passes
+4. When the PR is merged, the Changesets bot creates a new PR to version packages
+5. Once the version PR is merged, GitHub Actions builds and pushes Docker images to GHCR
+6. Kubernetes manifests are updated with the new image tags
+7. Changes to Kubernetes manifests trigger deployment to the k3s cluster
+
+### Process
+
+### 1. Feature Development
+
+Create a feature branch from `main`:
 
 ```bash
-git checkout -b feature/your-feature-name
+git checkout -b feature/my-new-feature
 ```
 
-2. Make your changes and commit them:
+Make your changes to the codebase and commit them:
 
 ```bash
 git add .
-git commit -m "feat: your feature description"
+git commit -m "feat: implement new feature"
 ```
 
-3. Push your changes:
+### 2. Creating Changesets
+
+Before creating a PR, add a changeset to document your changes:
 
 ```bash
-git push origin feature/your-feature-name
+bun changeset
 ```
 
-4. Create a pull request on GitHub
+This will start an interactive CLI that guides you through the process:
 
-### Using Changesets
+1. Select the packages that have changed (space to select, enter to confirm)
+2. Choose the type of change (patch, minor, major) for each package
+3. Write a summary of the changes
 
-This project uses [Changesets](https://github.com/changesets/changesets) for versioning and changelog management. The changesets bot will automatically check your PRs for changesets.
-
-1. **Creating a Changeset**
-
-   ```bash
-   # Create a new changeset
-   bun changeset
-   ```
-
-   This will prompt you to:
-
-   - Select the type of change (patch, minor, major)
-   - Write a description of the changes
-   - Select the affected packages
-
-2. **Changeset Format**
-
-   ```markdown
-   ---
-   "package-name": patch|minor|major
-   ---
-
-   Description of changes
-   ```
-
-3. **Changesets Bot**
-
-   - The bot will automatically comment on PRs that need changesets
-   - It provides a direct link to create a changeset from the PR
-   - The bot will update its comments when PRs are modified
-   - Documentation-only changes typically don't need changesets
-
-4. **Versioning Guidelines**
-   - `patch`: Bug fixes and minor changes
-   - `minor`: New features (backwards compatible)
-   - `major`: Breaking changes
-
-### Turborepo Commands
+The command will create a markdown file in the `.changeset` directory. Commit this file:
 
 ```bash
-# Run development servers for all apps
-bun dev
-
-# Build all packages and apps
-bun build
-
-# Run tests for all packages and apps
-bun test
-
-# Run linting for all packages and apps
-bun lint
-
-# Run specific workspace
-bun dev --filter=api
-bun dev --filter=imessage
-
-# Run command in specific workspace
-bun test --filter=api
-bun build --filter=imessage
+git add .changeset/*.md
+git commit -m "chore: add changeset"
 ```
 
-## Code Style
+### 3. Linting and Testing
 
-- Follow the TypeScript style guide
-- Use ESLint and Prettier for code formatting
-- Write meaningful commit messages following conventional commits
-- Include tests for new features
+Before preparing to create a new pull request, ensure that your changes do not fail any tests or lints.
 
 ### Running Tests
 
@@ -171,67 +175,45 @@ bun lint:fix
 bun format
 ```
 
-## Debugging
+### 4. Creating a Pull Request
 
-### Local Development
-
-1. Start the development server with debugging:
+Push your branch to GitHub and create a PR:
 
 ```bash
-bun dev:debug
+git push -u origin feature/my-new-feature
 ```
 
-2. Attach your debugger to port 9229
+Follow the PR template and ensure you've checked the "Changeset" checkboxes.
 
-### Logging
+### 5. CI Validation
 
-- Use the built-in logger for consistent logging
-- Log levels: error, warn, info, debug
-- Include relevant context in log messages
+GitHub Actions will automatically:
 
-## Performance Considerations
+- Check that a changeset is present for affected packages
+- Run type checking, linting, and build steps
+- Run tests
 
-- Use appropriate indexes in the database
-- Implement caching where necessary
-- Monitor memory usage
-- Profile slow operations
+Fix any issues that arise before merging.
 
-## Security Best Practices
+### 6. Versioning and Release Process
 
-- Never commit sensitive data
-- Use environment variables for secrets
-- Implement proper input validation
-- Follow OWASP security guidelines
+When the PR is approved and all checks pass, merge it to `main`.
 
-## Troubleshooting
+The Changesets GitHub Action will:
 
-### Common Issues
+1. Create a new "Version Packages" PR that updates all package versions
+2. Generate changelogs based on your changeset descriptions
 
-1. **Database Connection Issues**
+When the Version Packages PR is merged:
 
-   - Check database service status
-   - Verify environment variables
-   - Check database logs
+- GitHub Actions will build Docker images for affected apps
+- Images will be tagged with the commit SHA and pushed to GHCR
+- Kubernetes manifests will be updated with the new image tags
+- Updated manifests will trigger deployment to the k3s cluster
 
-2. **Build Failures**
+### 7. Monitoring Deployments
 
-   - Clear node_modules and reinstall
-   - Check TypeScript errors
-   - Verify dependency versions
-
-3. **Test Failures**
-   - Check test environment setup
-   - Verify test data
-   - Check for timing issues
-
-## Contributing
-
-1. Fork the repository
-2. Create your feature branch
-3. Make your changes
-4. Add tests
-5. Update documentation
-6. Submit a pull request
+You can monitor the deployment progress in the GitHub Actions tab of your repository.
 
 ## Resources
 

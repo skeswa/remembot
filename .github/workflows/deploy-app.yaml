@@ -2,7 +2,7 @@
 # the monorepo.
 #
 # This workflow is designed to be called by the `deploy-all-apps.yaml` and
-# `release-and-publish.yaml` workflows.
+# `release.yaml` workflows.
 
 name: Deploy App
 

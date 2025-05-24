@@ -1,0 +1,82 @@
+# Reusable workflow that builds and publishes a specific package to the npm registry
+# and then updates the publishedVersion field in package.json.
+#
+# This workflow is designed to be called by the `publish-drifted-packages.yaml`
+# workflow.
+
+name: Publish Package
+
+on:
+  # Allows you to call this workflow from another one.
+  workflow_call:
+    inputs:
+      package_name:
+        description: "Name of the directory within packages/ to publish."
+        required: true
+        type: string
+
+concurrency: publish-package_${{ github.ref }}_${{ inputs.package_name }}
+
+jobs:
+  publish-package:
+    name: Publish Package
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+    steps:
+      # Checkout the repository with full history for git operations.
+      - name: Checkout Repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # Extract the version from the package's package.json.
+      - name: Extract package version
+        id: package-version
+        run: |
+          VERSION=$(node -p "require('./packages/${{ inputs.package_name }}/package.json').version")
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Extracted version: $VERSION from packages/${{ inputs.package_name }}/package.json"
+
+      # Update publishedVersion in package.json to match version after publish.
+      - name: Update publishedVersion in package.json
+        run: |
+          # Update publishedVersion in package.json to match version after publish.
+          cd packages/${{ inputs.package_name }}
+          VERSION=$(node -p "require('./package.json').version")
+          node -e "const fs = require('fs'); const pkg = require('./package.json'); pkg.publishedVersion = '$VERSION'; fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n');"
+
+          # Configure git and commit the changes.
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
+          git add package.json
+          git commit -m "chore: set publishedVersion for ${{ inputs.package_name }} to ${{ steps.package-version.outputs.version }}" || echo "No changes to commit"
+
+          echo "Updated publishedVersion to $VERSION in ${{ inputs.package_name }}/package.json"
+
+      # Push the updates back to the remote. This step includes retry logic to
+      # handle concurrent updates.
+      - name: Push changes
+        id: push-changes
+        run: |
+          # Get the current branch name (e.g., main, develop).
+          BRANCH_NAME="${{ github.ref_name }}"
+
+          echo "Attempting to pull with rebase from origin/${BRANCH_NAME}..."
+          # Pull latest changes from remote and rebase local commits on top.
+          # Loop to retry a few times in case of very fast concurrent updates.
+          for i in 1 2 3; do
+            echo "Pull/Push attempt $i for branch ${BRANCH_NAME}"
+            if git pull --rebase origin "${BRANCH_NAME}" && git push origin "${BRANCH_NAME}"; then
+              echo "Push successful on attempt $i."
+              exit 0
+            fi
+
+            # Randomize the sleep duration between 5 and 10 seconds.
+            SLEEP_DURATION=$(($RANDOM % 5 + 5))
+            echo "Pull/Push attempt $i failed. Retrying in $SLEEP_DURATION seconds..."
+            sleep $SLEEP_DURATION
+          done
+          echo "Failed to push changes after multiple retries."
+          exit 1

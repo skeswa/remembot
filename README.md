@@ -61,10 +61,7 @@ This project uses Turborepo to manage the monorepo. The workspace is organized a
 
 ```
 remembot/
-├── apps/
-│   ├── api/          # Backend API
-│   ├── courier/      # iMessage client
-│   └── web/          # User-facing web application
+├── apps/             # Applications
 ├── packages/         # Shared libraries and other packages
 └── docs/             # Documentation
 ```
@@ -121,13 +118,9 @@ For detailed information about our CI/CD pipeline and release process, please re
 ### Turborepo Commands
 
 ```bash
-# Run specific workspace
+# Run command in specific package of workspace
 bun dev --filter=api
-bun dev --filter=imessage
-
-# Run command in specific workspace
-bun test --filter=api
-bun build --filter=imessage
+bun test --filter=web
 ```
 
 ## Contributing

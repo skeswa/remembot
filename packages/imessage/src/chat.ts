@@ -63,7 +63,7 @@ export async function getRecentChats(limit: number = 10): Promise<Chat[]> {
 
   const rawChats = await queryDb<RawChatMessage>(query, [limit]);
 
-  if (!rawChats || rawChats.length === 0) {
+  if (!rawChats || rawChats.length < 1) {
     return [];
   }
 

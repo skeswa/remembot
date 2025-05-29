@@ -3,12 +3,13 @@ import os from "os";
 
 import { getRecentChats } from "@/chat";
 
-// Mocks
+type QueryFilter = (sql: string, params?: unknown[]) => boolean;
+
 interface QueryDbMock {
   calls: unknown[][];
-  _queue: Array<{ type: "resolve"; val: unknown }>;
+  mockResponseByQueryFilter: Map<QueryFilter, Promise<unknown[]>>;
   mockClear: () => void;
-  mockResolvedValueOnce: (val: unknown) => void;
+  mockResolvedValueOnce: (queryFilter: QueryFilter, val: unknown[]) => void;
   mockReset: () => void;
   fn: (...args: unknown[]) => Promise<unknown[]>;
 }
@@ -18,24 +19,34 @@ let queryDbMock: QueryDbMock;
 mock.module("@/db", () => {
   queryDbMock = {
     calls: [],
-    _queue: [],
+    mockResponseByQueryFilter: new Map(),
     mockClear: () => {
       queryDbMock!.calls = [];
     },
-    mockResolvedValueOnce: (val: unknown) => {
-      queryDbMock!._queue.push({ type: "resolve", val });
+    mockResolvedValueOnce: (queryFilter: QueryFilter, val: unknown[]) => {
+      queryDbMock!.mockResponseByQueryFilter.set(
+        queryFilter,
+        Promise.resolve(val)
+      );
     },
     mockReset: () => {
-      queryDbMock!._queue = [];
+      queryDbMock!.mockResponseByQueryFilter.clear();
     },
     async fn(...args: unknown[]) {
+      const [sql, params] = args;
+
       queryDbMock!.calls.push(args);
-      if (queryDbMock!._queue.length > 0) {
-        const next = queryDbMock!._queue.shift();
-        if (!next) return [];
-        if (next.type === "resolve") return [next.val];
+
+      const [mockResponse] = Array.from(
+        queryDbMock!.mockResponseByQueryFilter.entries()
+      ).filter(([filter]) => filter(sql as string, params as unknown[]));
+
+      if (!mockResponse) {
+        throw new Error(`No mock response found for query: ${sql}`);
       }
-      return [];
+
+      queryDbMock!.mockResponseByQueryFilter.delete(mockResponse[0]);
+      return mockResponse[1];
     },
   };
   return { queryDb: queryDbMock.fn };
@@ -51,13 +62,13 @@ mock.module("os", () => {
 describe("chat utility - getRecentChats", () => {
   beforeEach(() => {
     queryDbMock.mockClear();
-    queryDbMock.mockResolvedValueOnce([]);
-    queryDbMock.mockResolvedValueOnce([]);
+    queryDbMock.mockResolvedValueOnce(() => true, []);
+    queryDbMock.mockResolvedValueOnce(() => true, []);
   });
 
   it("should return an empty array if no chats are found", async () => {
     queryDbMock.mockReset();
-    queryDbMock.mockResolvedValueOnce([]);
+    queryDbMock.mockResolvedValueOnce(() => true, []);
 
     const chats = await getRecentChats(5);
     expect(chats).toEqual([]);
@@ -100,18 +111,24 @@ describe("chat utility - getRecentChats", () => {
       { chat_id: 2, handle_id: "+19876543210" },
     ];
 
-    queryDbMock.mockResolvedValueOnce(rawChatMessages);
-    queryDbMock.mockResolvedValueOnce(rawParticipants);
+    queryDbMock.mockResolvedValueOnce(
+      (query) => query.includes("FROM chat"),
+      rawChatMessages
+    );
+    queryDbMock.mockResolvedValueOnce(
+      (query) => query.includes("FROM chat_handle_join"),
+      rawParticipants
+    );
 
     const chats = await getRecentChats(2);
 
     expect(queryDbMock.calls.length).toBe(2);
     expect((queryDbMock.calls[0]![0] as string).toString()).toContain(
-      "ORDER BY m.date DESC",
+      "ORDER BY m.date DESC"
     );
     expect(queryDbMock.calls[0]![1]).toEqual([2]);
     expect((queryDbMock.calls[1]![0] as string).toString()).toContain(
-      "WHERE chj.chat_id IN (?,?)",
+      "WHERE chj.chat_id IN (?,?)"
     );
     expect(queryDbMock.calls[1]![1]).toEqual([1, 2]);
 
@@ -127,7 +144,7 @@ describe("chat utility - getRecentChats", () => {
       expect(chats![0]!.lastMessage!.handle).toBe("+1234567890");
       expect(chats![0]!.lastMessage!.group).toBe("chat123");
       expect(chats![0]!.lastMessage!.date).toEqual(
-        new Date(Date.UTC(2001, 0, 1) + 1677640000 * 1000),
+        new Date(Date.UTC(2001, 0, 1) + 1677640000 * 1000)
       );
     }
 
@@ -139,7 +156,7 @@ describe("chat utility - getRecentChats", () => {
       expect(chats![1]!.lastMessage!.text).toBe("Attachment received");
       expect(chats![1]!.lastMessage!.fromMe).toBe(true);
       expect(chats![1]!.lastMessage!.file).toBe(
-        "/mock/home/Library/Messages/Attachments/some/path/file.png",
+        "/mock/home/Library/Messages/Attachments/some/path/file.png"
       );
       expect(chats![1]!.lastMessage!.fileType).toBe("image/png");
       expect(chats![1]!.lastMessage!.group).toBeNull();
@@ -148,7 +165,7 @@ describe("chat utility - getRecentChats", () => {
 
   it("should use default limit of 10 if no limit is provided", async () => {
     queryDbMock.mockReset();
-    queryDbMock.mockResolvedValueOnce([]);
+    queryDbMock.mockResolvedValueOnce(() => true, []);
 
     await getRecentChats();
     expect(queryDbMock.calls[0]![1]).toEqual([10]);
@@ -171,8 +188,14 @@ describe("chat utility - getRecentChats", () => {
         attachment_mime_type: null,
       },
     ];
-    queryDbMock.mockResolvedValueOnce(rawChatMessages);
-    queryDbMock.mockResolvedValueOnce([{ chat_id: 1, handle_id: "+123" }]);
+    queryDbMock.mockResolvedValueOnce(
+      (query) => query.includes("FROM chat"),
+      rawChatMessages
+    );
+    queryDbMock.mockResolvedValueOnce(
+      (query) => query.includes("FROM chat_handle_join"),
+      [{ chat_id: 1, handle_id: "+123" }]
+    );
 
     const chats = await getRecentChats(1);
     expect(chats!.length).toBe(1);

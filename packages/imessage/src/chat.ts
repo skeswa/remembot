@@ -12,7 +12,8 @@ import type { Handle } from "@/handle";
 import type { Message } from "@/message";
 
 /**
- * Represents a chat (group or 1:1) in iMessage, including participants and last message.
+ * Represents a chat (group or 1:1) in iMessage, including participants and last
+ * message.
  */
 export interface Chat {
   /** Name of the chat (e.g., contact name or group name). */
@@ -28,10 +29,11 @@ export interface Chat {
 }
 
 /**
- * Gets recent chats from the iMessage database, including their last message and participants.
+ * Gets recent chats from the iMessage database, including their last message
+ * and participants.
  *
- * @param limit The number of recent chats to return. Defaults to 10.
- * @returns A promise that resolves with an array of chats.
+ * @param limit the number of recent chats to return - defaults to 10
+ * @returns A promise that resolves with an array of chats
  */
 export async function getRecentChats(limit: number = 10): Promise<Chat[]> {
   const query = `
@@ -67,7 +69,7 @@ export async function getRecentChats(limit: number = 10): Promise<Chat[]> {
     return [];
   }
 
-  const chatIds = rawChats.map((rc) => rc.chatId);
+  const chatIds = rawChats.map((rawChat) => rawChat.chatId);
 
   const participantsQuery = `
     SELECT
@@ -79,8 +81,11 @@ export async function getRecentChats(limit: number = 10): Promise<Chat[]> {
   `;
   const rawParticipants = await queryDb<RawChatParticipant>(
     participantsQuery,
-    chatIds,
+    chatIds
   );
+
+  console.log('rawChats', rawChats)
+  console.log('rawParticipants', rawParticipants)
 
   // Map of chatId to array of participant handles
   const participantsByChatId = new Map<number, Handle[]>();

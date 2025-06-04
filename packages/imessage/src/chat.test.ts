@@ -33,20 +33,24 @@ mock.module("@/db", () => {
       queryDbMock!.mockResponseByQueryFilter.clear();
     },
     async fn(...args: unknown[]) {
+      console.log("args", args);
       const [sql, params] = args;
 
       queryDbMock!.calls.push(args);
 
-      const [mockResponse] = Array.from(
+      const [mockResponseByQueryFilterEntry] = Array.from(
         queryDbMock!.mockResponseByQueryFilter.entries()
-      ).filter(([filter]) => filter(sql as string, params as unknown[]));
+      ).filter(([queryFilter]) => queryFilter(sql as string, params as unknown[]));
 
-      if (!mockResponse) {
+      if (!mockResponseByQueryFilterEntry) {
         throw new Error(`No mock response found for query: ${sql}`);
       }
 
-      queryDbMock!.mockResponseByQueryFilter.delete(mockResponse[0]);
-      return mockResponse[1];
+      const [queryFilter, mockResponse] = mockResponseByQueryFilterEntry;
+
+      queryDbMock!.mockResponseByQueryFilter.delete(queryFilter);
+
+      return mockResponse;
     },
   };
   return { queryDb: queryDbMock.fn };
@@ -77,6 +81,7 @@ describe("chat utility - getRecentChats", () => {
 
   it("should correctly parse raw chat messages and fetch participants", async () => {
     queryDbMock.mockReset();
+
     const rawChatMessages = [
       {
         chat_id: 1,
@@ -123,27 +128,27 @@ describe("chat utility - getRecentChats", () => {
     const chats = await getRecentChats(2);
 
     expect(queryDbMock.calls.length).toBe(2);
-    expect((queryDbMock.calls[0]![0] as string).toString()).toContain(
+    expect(queryDbMock.calls[0]?.[0]?.toString()).toContain(
       "ORDER BY m.date DESC"
     );
-    expect(queryDbMock.calls[0]![1]).toEqual([2]);
-    expect((queryDbMock.calls[1]![0] as string).toString()).toContain(
+    expect(queryDbMock.calls[0]?.[1]).toEqual([2]);
+    expect(queryDbMock.calls[1]?.[0]?.toString()).toContain(
       "WHERE chj.chat_id IN (?,?)"
     );
-    expect(queryDbMock.calls[1]![1]).toEqual([1, 2]);
+    expect(queryDbMock.calls[1]?.[1]).toEqual([1, 2]);
 
-    expect(chats!.length).toBe(2);
+    expect(chats.length).toBe(2);
 
-    expect(chats![0]!.id).toBe("chat123");
-    expect(chats![0]!.displayName).toBe("Group Chat 1");
-    expect(chats![0]!.participants).toEqual(["+1234567890", "+1112223333"]);
-    expect(chats![0]!.lastMessage).not.toBeNull();
-    if (chats![0]!.lastMessage) {
-      expect(chats![0]!.lastMessage!.text).toBe("Hello there");
-      expect(chats![0]!.lastMessage!.fromMe).toBe(false);
-      expect(chats![0]!.lastMessage!.handle).toBe("+1234567890");
-      expect(chats![0]!.lastMessage!.group).toBe("chat123");
-      expect(chats![0]!.lastMessage!.date).toEqual(
+    expect(chats[0]?.id).toBe("chat123");
+    expect(chats[0]?.displayName).toBe("Group Chat 1");
+    expect(chats[0]?.participants).toEqual(["+1234567890", "+1112223333"]);
+    expect(chats[0]?.lastMessage).not.toBeNull();
+    if (chats[0]!.lastMessage) {
+      expect(chats[0]?.lastMessage.text).toBe("Hello there");
+      expect(chats[0]?.lastMessage.fromMe).toBe(false);
+      expect(chats[0]?.lastMessage.handle).toBe("+1234567890");
+      expect(chats[0]?.lastMessage.group).toBe("chat123");
+      expect(chats[0]?.lastMessage.date).toEqual(
         new Date(Date.UTC(2001, 0, 1) + 1677640000 * 1000)
       );
     }

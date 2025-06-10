@@ -1,10 +1,11 @@
 import { Command } from "commander";
 
 import {
-  getRecentChats,
+  applyNamesToHandles,
   handleForName,
   listen,
   nameForHandle,
+  listChats,
   send,
   sendFile,
 } from "@remembot/imessage";
@@ -16,6 +17,26 @@ program
   .name("imessage-cli")
   .description("Test @remembot/imessage features")
   .version("0.1.0");
+
+program
+  .command("shoop")
+  .description("Shoop da woop")
+  .action(async () => {
+    try {
+      const chats = await listChats();
+
+      console.log(chats);
+
+      const handles = await applyNamesToHandles(
+        chats.flatMap((chat) => chat.participants)
+      );
+
+      console.log(handles);
+    } catch (err: unknown) {
+      console.error("Error:", err);
+      process.exit(1);
+    }
+  });
 
 program
   .command("send")
@@ -76,29 +97,6 @@ program
         console.log(name);
       } else {
         console.log(`No name found for handle: ${opts.handle}`);
-      }
-    } catch (err: unknown) {
-      console.error("Error:", err);
-      process.exit(1);
-    }
-  });
-
-program
-  .command("recent-chats")
-  .description("List recent chats")
-  .option("--limit <n>", "Limit the number of chats", "10")
-  .action(async (opts) => {
-    try {
-      const limit = opts.limit ? parseInt(opts.limit, 10) : 10;
-      const chats = await getRecentChats(limit);
-      for (const chat of chats) {
-        console.log(`Chat: ${chat.displayName} (ID: ${chat.id})`);
-        if (chat.lastMessage) {
-          console.log(
-            `  Last: [${chat.lastMessage.date.toISOString()}] ${chat.lastMessage.fromMe ? "Me" : chat.lastMessage.handle}: ${chat.lastMessage.text}`
-          );
-        }
-        console.log(`  Participants: ${chat.participants.join(", ")}`);
       }
     } catch (err: unknown) {
       console.error("Error:", err);

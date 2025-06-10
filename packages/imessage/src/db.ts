@@ -20,11 +20,11 @@ function getDbConnection(): sqlite3.Database {
   if (!db) {
     db = new sqlite3.Database(DB_PATH, sqlite3.OPEN_READONLY, (err) => {
       if (err) {
-        console.error("Error opening iMessage database:", err.message);
-        throw new Error(`Failed to connect to iMessage DB: ${err.message}`);
+        throw new Error(`Failed to connect to iMessage DB - ensure this process has Full Disk Access (https://www.huntress.com/blog/ask-the-mac-guy-whats-the-deal-with-full-disk-access): ${err.message}`);
       }
     });
   }
+
   return db;
 }
 
@@ -37,9 +37,8 @@ export function closeDbConnection(): void {
   if (db) {
     db.close((err) => {
       if (err) {
-        console.error("Error closing iMessage database:", err.message);
+        throw new Error(`Failed to close iMessage DB: ${err.message}`);
       } else {
-        // console.log('Closed the iMessage database connection.');
         db = null;
       }
     });

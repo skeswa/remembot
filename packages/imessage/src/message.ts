@@ -7,6 +7,7 @@ import { EventEmitter } from "events";
 import os from "os";
 
 import { queryDb, closeDbConnection } from "@/db";
+import type { Handle } from "@/handle";
 
 /**
  * Represents a single iMessage message, including text, sender, group, and optional attachment.
@@ -23,7 +24,7 @@ export interface Message {
   /** MIME type of the attachment, if present. */
   readonly fileType?: string | null;
   /** Phone number, email, or contact name of the sender. */
-  readonly handle: string;
+  readonly handle: Handle;
   /** Unique message identifier. */
   readonly guid: string;
   /** Text content of the message, or null if not present. */
@@ -178,7 +179,7 @@ async function fetchNewMessages() {
         const message: Message = {
           guid: rawMsg.guid,
           text: rawMsg.text,
-          handle: rawMsg.handle_id,
+          handle: { id: rawMsg.handle_id, name: rawMsg.handle_id },
           group: rawMsg.chat_identifier,
           date: convertAppleTime(rawMsg.date),
           fromMe: !!rawMsg.is_from_me,

@@ -18,7 +18,7 @@ export async function handleForName(name: string): Promise<Handle | null> {
   const script = getHandleForNameAppleScript(name.replace(/"/g, '\\"'));
   try {
     const result = await executeAppleScript(script);
-    return typeof result === "string" ? result : null;
+    return typeof result === "string" ? { id: result, name } : null;
   } catch (error) {
     console.error(`Error getting handle for name "${name}":`, error);
     return null;
@@ -32,12 +32,12 @@ export async function handleForName(name: string): Promise<Handle | null> {
  */
 export async function nameForHandle(handle: Handle): Promise<string | null> {
   if (!handle) throw new Error("Handle must be provided.");
-  const script = getNameForHandleAppleScript(handle.replace(/"/g, '\\"'));
+  const script = getNameForHandleAppleScript(handle.id.replace(/"/g, '\\"'));
   try {
     const result = await executeAppleScript(script);
     return typeof result === "string" ? result : null;
   } catch (error) {
-    console.error(`Error getting name for handle "${handle}":`, error);
+    console.error(`Error getting name for handle "${handle.id}":`, error);
     return null;
   }
 }
@@ -88,7 +88,7 @@ end tell
  * @param handle The contact handle.
  * @returns The AppleScript string.
  */
-function getNameForHandleAppleScript(handle: Handle): string {
+function getNameForHandleAppleScript(handle: string): string {
   return `
 tell application "Contacts"
   -- Search by phone number

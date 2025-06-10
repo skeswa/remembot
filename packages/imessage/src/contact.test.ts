@@ -61,7 +61,7 @@ describe("contact utility", () => {
   describe("handleForName", () => {
     it("should return a handle for a known name", async () => {
       const name = "Tim Cook";
-      const expectedHandle: Handle = "+15551234567";
+      const expectedHandle: Handle = { id: "+15551234567", name: "Tim Cook" };
       executeAppleScriptMock.mockResolvedValue(expectedHandle);
 
       const handle = await handleForName(name);
@@ -93,18 +93,18 @@ describe("contact utility", () => {
 
   describe("nameForHandle", () => {
     it("should return a name for a known handle", async () => {
-      const handle: Handle = "+15551234567";
+      const handle: Handle = { id: "+15551234567", name: "Tim Cook" };
       const expectedName = "Tim Cook";
       executeAppleScriptMock.mockResolvedValue(expectedName);
 
       const name = await nameForHandle(handle);
 
-      expect(executeAppleScriptMock.calls[0]?.[0]).toContain(handle);
+      expect(executeAppleScriptMock.calls[0]?.[0]).toContain(handle.id);
       expect(name).toBe(expectedName);
     });
 
     it("should return null if handle is not found", async () => {
-      const handle: Handle = "unknown@example.com";
+      const handle: Handle = { id: "unknown@example.com", name: "Unknown" };
       executeAppleScriptMock.mockResolvedValue(null);
 
       const name = await nameForHandle(handle);
@@ -112,13 +112,13 @@ describe("contact utility", () => {
     });
 
     it("should throw an error if handle is not provided", async () => {
-      await expect(nameForHandle("")).rejects.toThrow(
+      await expect(nameForHandle({ id: "", name: "" })).rejects.toThrow(
         "Handle must be provided.",
       );
     });
 
     it("should handle AppleScript execution errors", async () => {
-      const handle = "error@example.com";
+      const handle: Handle = { id: "error@example.com", name: "Error" };
       executeAppleScriptMock.mockRejectedValue(new Error("AppleScript failed"));
       const result = await nameForHandle(handle);
       expect(result).toBeNull();

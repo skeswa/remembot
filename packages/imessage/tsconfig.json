@@ -2,12 +2,19 @@
   "extends": "@repo/typescript-config/bun.json",
   "compilerOptions": {
     "baseUrl": ".",
+    "composite": true,
+    "declaration": true,
+    "declarationMap": true,
+    "emitDeclarationOnly": false,
     "outDir": "./dist",
     "paths": {
       "@/*": [
         "src/*"
       ]
     },
+    "preserveSymlinks": true,
+    "preserveWatchOutput": true,
+    "removeComments": false,
     "rootDir": "src"
   },
   "exclude": [
@@ -15,6 +22,6 @@
     "dist"
   ],
   "include": [
-    "src/**/*.ts",
+    "src/**/*.ts"
   ]
 }

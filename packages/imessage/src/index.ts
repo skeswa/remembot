@@ -8,7 +8,6 @@ import { EventEmitter } from "events";
 
 import { executeAppleScript } from "@/applescript";
 import * as contact from "@/contact";
-import * as chat from "@/chat";
 import type { Handle } from "@/handle";
 import type { Chat } from "@/chat";
 import type { Message } from "@/message";
@@ -16,7 +15,7 @@ import * as message from "@/message";
 
 const SEND_MESSAGE_APPLESCRIPT = (target: Handle, message: string) => `
 tell application "Messages"
-  set targetBuddy to "${target}"
+  set targetBuddy to "${target.id}"
   set targetService to id of 1st account whose service type = iMessage
   set textMessage to "${message}"
   set theBuddy to buddy targetBuddy of service targetService
@@ -26,7 +25,7 @@ end tell
 
 const SEND_FILE_APPLESCRIPT = (target: Handle, filePath: string) => `
 tell application "Messages"
-  set targetBuddy to "${target}"
+  set targetBuddy to "${target.id}"
   set targetService to id of 1st account whose service type = iMessage
   set theFile to POSIX file "${filePath}"
   set theBuddy to buddy targetBuddy of service targetService
@@ -48,7 +47,7 @@ export async function send(handle: Handle, text: string): Promise<void> {
   try {
     await executeAppleScript(script);
   } catch (error) {
-    console.error(`Failed to send message to ${handle}:`, error);
+    console.error(`Failed to send message to ${handle.id}:`, error);
     throw error;
   }
 }
@@ -61,7 +60,7 @@ export async function send(handle: Handle, text: string): Promise<void> {
  */
 export async function sendFile(
   handle: Handle,
-  filePath: string,
+  filePath: string
 ): Promise<void> {
   if (!handle || !filePath) {
     throw new Error("Handle and filePath must be provided.");
@@ -70,7 +69,7 @@ export async function sendFile(
   try {
     await executeAppleScript(script);
   } catch (error) {
-    console.error(`Failed to send file to ${handle}:`, error);
+    console.error(`Failed to send file to ${handle.id}:`, error);
     throw error;
   }
 }
@@ -94,15 +93,6 @@ export async function nameForHandle(handle: Handle): Promise<string | null> {
 }
 
 /**
- * Get recent chats.
- * @param limit Amount of recent chats to return. Defaults to 10.
- * @returns A promise that resolves with an array of chats.
- */
-export async function getRecentChats(limit?: number): Promise<chat.Chat[]> {
-  return chat.getRecentChats(limit);
-}
-
-/**
  * Begins polling the local @remembot/imessage database for new messages.
  * @param interval Polling interval in milliseconds. Defaults to 1000ms.
  * @returns EventEmitter that emits 'message' and 'error' events.
@@ -117,5 +107,8 @@ export function listen(interval?: number): EventEmitter {
 export function stopListening(): void {
   message.stopListening();
 }
+
+export { listChats } from "@/chat";
+export { applyNamesToHandles } from "@/handle";
 
 export type { Message, Chat, Handle };

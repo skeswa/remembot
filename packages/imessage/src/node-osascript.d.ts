@@ -11,7 +11,7 @@ declare module "node-osascript" {
   export function execute(
     script: string,
     variables?: Record<string, unknown>,
-    callback?: (err: Error | null, result: unknown, raw: unknown) => void
+    callback?: (err: Error | null, result: unknown, raw: unknown) => void,
   ): ChildProcess;
 
   /**
@@ -24,6 +24,6 @@ declare module "node-osascript" {
   export function executeFile(
     path: string,
     variables?: Record<string, unknown>,
-    callback?: (err: Error | null, result: unknown, raw: unknown) => void
+    callback?: (err: Error | null, result: unknown, raw: unknown) => void,
   ): ChildProcess;
 }

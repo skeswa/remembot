@@ -59,7 +59,7 @@ export async function listChats(limit: number = 10): Promise<Chat[]> {
         id: participant.id,
         name: null,
         service: participant.service,
-      })
+      }),
     );
 
     return {

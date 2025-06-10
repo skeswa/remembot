@@ -28,7 +28,7 @@ program
       console.log(chats);
 
       const handles = await applyNamesToHandles(
-        chats.flatMap((chat) => chat.participants)
+        chats.flatMap((chat) => chat.participants),
       );
 
       console.log(handles);
@@ -113,11 +113,11 @@ program
       const emitter = listen();
       emitter.on("message", (msg: Message) => {
         console.log(
-          `[${msg.date.toISOString()}] ${msg.fromMe ? "Me" : msg.handle}: ${msg.text}`
+          `[${msg.date.toISOString()}] ${msg.fromMe ? "Me" : msg.handle}: ${msg.text}`,
         );
         if (msg.file) {
           console.log(
-            `  Attachment: ${msg.file} (${msg.fileType || "unknown type"})`
+            `  Attachment: ${msg.file} (${msg.fileType || "unknown type"})`,
           );
         }
       });

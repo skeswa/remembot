@@ -20,7 +20,9 @@ function getDbConnection(): sqlite3.Database {
   if (!db) {
     db = new sqlite3.Database(DB_PATH, sqlite3.OPEN_READONLY, (err) => {
       if (err) {
-        throw new Error(`Failed to connect to iMessage DB - ensure this process has Full Disk Access (https://www.huntress.com/blog/ask-the-mac-guy-whats-the-deal-with-full-disk-access): ${err.message}`);
+        throw new Error(
+          `Failed to connect to iMessage DB - ensure this process has Full Disk Access (https://www.huntress.com/blog/ask-the-mac-guy-whats-the-deal-with-full-disk-access): ${err.message}`,
+        );
       }
     });
   }

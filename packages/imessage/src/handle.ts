@@ -21,7 +21,9 @@ export interface Handle {
  * @returns A promise that resolves with an array of handles with their name properties populated.
  *          Names will be null if not found.
  */
-export async function applyNamesToHandles(handles: Handle[]): Promise<Handle[]> {
+export async function applyNamesToHandles(
+  handles: Handle[],
+): Promise<Handle[]> {
   if (!handles?.length) return [];
 
   const script = getNamesForHandlesAppleScript(handles.map((h) => h.id));
@@ -65,7 +67,7 @@ tell application "Contacts"
     set end of results to name of item 1 of thePeople
   else
     set end of results to missing value
-  end if`
+  end if`,
     )
     .join("\n")}
   

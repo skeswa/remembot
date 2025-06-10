@@ -13,7 +13,7 @@ interface ExecuteMock {
   execute: (
     script: string,
     variables?: Record<string, unknown>,
-    callback?: (err: Error | null, result: unknown, raw: unknown) => void
+    callback?: (err: Error | null, result: unknown, raw: unknown) => void,
   ) => unknown;
 }
 
@@ -38,7 +38,7 @@ mock.module("node-osascript", () => {
     execute(
       script: string,
       _variables?: Record<string, unknown>,
-      _callback?: (err: Error | null, result: unknown, raw: unknown) => void
+      _callback?: (err: Error | null, result: unknown, raw: unknown) => void,
     ): unknown {
       executeMock!.calls.push([script, _variables]);
 
@@ -51,7 +51,7 @@ mock.module("node-osascript", () => {
       _callback?.(
         null,
         executeMock!._resolve?.result,
-        executeMock!._resolve?.raw
+        executeMock!._resolve?.raw,
       );
     },
   };
@@ -84,7 +84,7 @@ describe("applescript utility", () => {
     executeMock.mockRejectedValue(new Error(errorMessage));
 
     await expect(executeAppleScript(script)).rejects.toThrow(
-      new Error(`AppleScript execution failed: ${errorMessage}`)
+      new Error(`AppleScript execution failed: ${errorMessage}`),
     );
     expect(executeMock.calls).toContainEqual([script, undefined]);
   });
@@ -95,7 +95,7 @@ describe("applescript utility", () => {
     executeMock.mockRejectedValue(errorObject);
 
     await expect(executeAppleScript(script)).rejects.toThrow(
-      `AppleScript execution failed: ${errorObject}`
+      `AppleScript execution failed: ${errorObject}`,
     );
   });
 });

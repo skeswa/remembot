@@ -36,7 +36,7 @@ export async function executeAppleScript(script: string): Promise<unknown> {
  */
 function executeWithPromise(
   script: string,
-  variables?: Record<string, unknown>
+  variables?: Record<string, unknown>,
 ): Promise<{ result: unknown; raw: unknown }> {
   return new Promise((resolve, reject) => {
     executeWithCallback(script, variables, (err, result, raw) => {

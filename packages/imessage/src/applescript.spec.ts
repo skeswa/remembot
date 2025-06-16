@@ -14,13 +14,17 @@ mock.module("node-osascript", () => ({
 describe("AppleScriptExecutor", () => {
   test("should execute AppleScript successfully", async () => {
     const executor = new AppleScriptExecutor();
-    const result = await executor.execute('tell application "Messages" to get name');
+    const result = await executor.execute(
+      'tell application "Messages" to get name',
+    );
     expect(result).toBe("Test result");
   });
 
   test("should handle AppleScript execution errors", async () => {
     const executor = new AppleScriptExecutor();
-    await expect(executor.execute("error")).rejects.toThrow("AppleScript execution failed: Test error");
+    await expect(executor.execute("error")).rejects.toThrow(
+      "AppleScript execution failed: Test error",
+    );
   });
 
   test("should handle non-Error objects in error handling", async () => {
@@ -32,6 +36,8 @@ describe("AppleScriptExecutor", () => {
     }));
 
     const executor = new AppleScriptExecutor();
-    await expect(executor.execute("any script")).rejects.toThrow("AppleScript execution failed: String error");
+    await expect(executor.execute("any script")).rejects.toThrow(
+      "AppleScript execution failed: String error",
+    );
   });
-}); 
+});

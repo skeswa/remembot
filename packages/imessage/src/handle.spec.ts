@@ -72,7 +72,7 @@ describe("Handle Module", () => {
       const mockExecutor: AppleScriptExecutor = {
         execute: mock(async (script: string) => {
           expect(script).toContain('"handle\\"with\\"quotes"');
-          expect(script).toContain('"handle\\\'with\\\'apostrophes"');
+          expect(script).toContain("\"handle\\'with\\'apostrophes\"");
           return ["Test Name"];
         }),
       };
@@ -86,4 +86,4 @@ describe("Handle Module", () => {
       expect(mockExecutor.execute).toHaveBeenCalledTimes(1);
     });
   });
-}); 
+});

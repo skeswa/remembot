@@ -52,7 +52,7 @@ describe("Message Module", () => {
       };
 
       await expect(sendMessage(mockExecutor, handle, "Hello")).rejects.toThrow(
-        "Failed to send message to test@example.com"
+        "Failed to send message to test@example.com",
       );
     });
   });
@@ -79,7 +79,9 @@ describe("Message Module", () => {
     test("should handle special characters in file path", async () => {
       const mockExecutor: AppleScriptExecutor = {
         execute: mock(async (script: string) => {
-          expect(script).toContain('set theFile to POSIX file "/path/to/file with \\"quotes\\""');
+          expect(script).toContain(
+            'set theFile to POSIX file "/path/to/file with \\"quotes\\""',
+          );
         }),
       };
 
@@ -88,7 +90,11 @@ describe("Message Module", () => {
         name: "Test User",
       };
 
-      await sendFileMessage(mockExecutor, handle, '/path/to/file with "quotes"');
+      await sendFileMessage(
+        mockExecutor,
+        handle,
+        '/path/to/file with "quotes"',
+      );
       expect(mockExecutor.execute).toHaveBeenCalledTimes(1);
     });
 
@@ -104,9 +110,9 @@ describe("Message Module", () => {
         name: "Test User",
       };
 
-      await expect(sendFileMessage(mockExecutor, handle, "/path/to/file")).rejects.toThrow(
-        "Failed to send file message to test@example.com"
-      );
+      await expect(
+        sendFileMessage(mockExecutor, handle, "/path/to/file"),
+      ).rejects.toThrow("Failed to send file message to test@example.com");
     });
   });
-}); 
+});

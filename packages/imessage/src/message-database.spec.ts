@@ -34,7 +34,7 @@ describe("MessageDatabase", () => {
         os.homedir(),
         "Library",
         "Messages",
-        "chat.db"
+        "chat.db",
       );
 
       expect(db).toBeInstanceOf(MessageDatabase);
@@ -84,7 +84,7 @@ describe("MessageDatabase", () => {
     test("should throw error when database is not open", () => {
       const db = new MessageDatabase("/path/to/chat.db");
       expect(() => db.query("SELECT * FROM message")).toThrow(
-        "Database not open"
+        "Database not open",
       );
     });
 

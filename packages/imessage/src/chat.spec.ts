@@ -130,4 +130,4 @@ describe("Chat Module", () => {
       }
     });
   });
-}); 
+});

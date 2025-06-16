@@ -59,11 +59,11 @@ describe("MessageListener", () => {
     test("should initialize with max message ID", () => {
       listener.startListening();
       expect(mockDb.query).toHaveBeenCalledWith(
-        "SELECT MAX(ROWID) as maxId FROM message;"
+        "SELECT MAX(ROWID) as maxId FROM message;",
       );
       expect(mockLogger.debug).toHaveBeenCalledWith(
         "Initializing last message ID to %d",
-        100
+        100,
       );
     });
 
@@ -93,7 +93,7 @@ describe("MessageListener", () => {
       listener.startListening();
       listener.stopListening();
       expect(mockLogger.info).toHaveBeenCalledWith(
-        "Stopped listening for new messages"
+        "Stopped listening for new messages",
       );
     });
   });
@@ -109,7 +109,7 @@ describe("MessageListener", () => {
           guid: "test-guid",
           text: "Test message",
           handle: { id: "test@example.com", name: null },
-        })
+        }),
       );
     });
 
@@ -146,4 +146,4 @@ describe("MessageListener", () => {
       expect(messageHandler1).not.toHaveBeenCalledTimes(2);
     });
   });
-}); 
+});

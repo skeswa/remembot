@@ -46,7 +46,9 @@ export interface ChatParticipant extends Handle {
  * @returns a promise that resolves with an array of chat summaries
  */
 export function listChats(db: MessageDatabase, limit: number = 10): Chat[] {
-  const rows = db.query<ListChatsQueryRow>(LIST_CHATS_QUERY, [limit]).slice(0, limit);
+  const rows = db
+    .query<ListChatsQueryRow>(LIST_CHATS_QUERY, [limit])
+    .slice(0, limit);
 
   const chats = rows.map((row) => {
     let participants: ListChatsQueryRowParticipant[] = [];

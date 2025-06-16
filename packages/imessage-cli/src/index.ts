@@ -1,15 +1,15 @@
 import { Command } from "commander";
 
 import {
-  applyNamesToHandles,
-  handleForName,
-  listen,
-  nameForHandle,
+  AppleScriptExecutor,
   listChats,
-  send,
-  sendFile,
+  MessageListener,
+  sendMessage,
+  sendFileMessage,
+  MessageDatabase,
 } from "@remembot/imessage";
 import type { Message } from "@remembot/imessage";
+import pino from "pino";
 
 const program = new Command();
 
@@ -19,19 +19,15 @@ program
   .version("0.1.0");
 
 program
-  .command("shoop")
-  .description("Shoop da woop")
+  .command("chats")
+  .description("List all chats")
   .action(async () => {
+    const db = MessageDatabase.default();
+
     try {
-      const chats = await listChats();
+      const chats = await listChats(db);
 
       console.log(chats);
-
-      const handles = await applyNamesToHandles(
-        chats.flatMap((chat) => chat.participants),
-      );
-
-      console.log(handles);
     } catch (err: unknown) {
       console.error("Error:", err);
       process.exit(1);
@@ -44,8 +40,11 @@ program
   .requiredOption("--handle <handle>", "The handle to send to")
   .requiredOption("--text <text>", "The text to send")
   .action(async (opts) => {
+    const executor = new AppleScriptExecutor();
+    const handle = { id: opts.handle, name: opts.handle };
+
     try {
-      await send(opts.handle, opts.text);
+      await sendMessage(executor, handle, opts.text);
       console.log(`Message sent to ${opts.handle}`);
     } catch (err: unknown) {
       console.error("Error:", err);
@@ -59,45 +58,13 @@ program
   .requiredOption("--handle <handle>", "The handle to send to")
   .requiredOption("--file <path>", "The file to send")
   .action(async (opts) => {
+    const executor = new AppleScriptExecutor();
+    const handle = { id: opts.handle, name: opts.handle };
+
     try {
-      await sendFile(opts.handle, opts.file);
+      await sendFileMessage(executor, handle, opts.file);
+
       console.log(`File sent to ${opts.handle}`);
-    } catch (err: unknown) {
-      console.error("Error:", err);
-      process.exit(1);
-    }
-  });
-
-program
-  .command("handle-for-name")
-  .description("Look up a handle by contact name")
-  .requiredOption("--name <name>", "The contact name")
-  .action(async (opts) => {
-    try {
-      const handle = await handleForName(opts.name);
-      if (handle) {
-        console.log(handle);
-      } else {
-        console.log(`No handle found for name: ${opts.name}`);
-      }
-    } catch (err: unknown) {
-      console.error("Error:", err);
-      process.exit(1);
-    }
-  });
-
-program
-  .command("name-for-handle")
-  .description("Look up a contact name by handle")
-  .requiredOption("--handle <handle>", "The handle")
-  .action(async (opts) => {
-    try {
-      const name = await nameForHandle(opts.handle);
-      if (name) {
-        console.log(name);
-      } else {
-        console.log(`No name found for handle: ${opts.handle}`);
-      }
     } catch (err: unknown) {
       console.error("Error:", err);
       process.exit(1);
@@ -108,21 +75,41 @@ program
   .command("listen")
   .description("Listen for new messages (prints to stdout)")
   .action(() => {
+    const db = MessageDatabase.default();
+    db.open();
+
+    const listener = new MessageListener(db, pino(), 1000);
+
     try {
       console.log("Listening for new messages. Press Ctrl+C to stop.");
-      const emitter = listen();
-      emitter.on("message", (msg: Message) => {
+
+      listener.on("message", (msg: Message) => {
         console.log(
-          `[${msg.date.toISOString()}] ${msg.fromMe ? "Me" : msg.handle}: ${msg.text}`,
+          `[${msg.date.toISOString()}] ${msg.isFromMe ? "Me" : (msg.handle.name ?? msg.handle.id)}: ${msg.text}`
         );
-        if (msg.file) {
+
+        if (msg.attachedFile) {
           console.log(
-            `  Attachment: ${msg.file} (${msg.fileType || "unknown type"})`,
+            `  Attachment: ${msg.attachedFile.path} (${msg.attachedFile.mimeType})`
           );
         }
       });
-      emitter.on("error", (err: unknown) => {
+      listener.on("error", (err: unknown) => {
         console.error("Error:", err);
+      });
+
+      listener.startListening();
+
+      process.on("SIGINT", () => {
+        console.log("\nShutting down...");
+        listener.dispose();
+        process.exit(0);
+      });
+
+      process.on("SIGTERM", () => {
+        console.log("\nShutting down...");
+        listener.dispose();
+        process.exit(0);
       });
 
       return new Promise(() => {});

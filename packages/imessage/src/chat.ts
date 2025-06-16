@@ -5,8 +5,10 @@
  * Handles chat metadata, last message, and participant resolution.
  */
 
-import { queryDb } from "@/db";
-import type { Handle } from "@/handle";
+import type { Handle } from "./handle";
+import { convertAppleTime } from "./helpers";
+import { MessageDatabase } from "./message-database";
+import type { Service } from "./service";
 
 /**
  * Represents a chat (group or 1:1) in iMessage, including participants and last
@@ -33,7 +35,7 @@ export interface Chat {
  */
 export interface ChatParticipant extends Handle {
   /** Service used to communicate with the participant. */
-  service: "iMessage" | "RCS" | "SMS";
+  service: Service;
 }
 
 /**
@@ -43,8 +45,8 @@ export interface ChatParticipant extends Handle {
  * @param limit the number of chat summaries to return - defaults to 10
  * @returns a promise that resolves with an array of chat summaries
  */
-export async function listChats(limit: number = 10): Promise<Chat[]> {
-  const rows = await queryDb<ListChatsQueryRow>(LIST_CHATS_QUERY, [limit]);
+export function listChats(db: MessageDatabase, limit: number = 10): Chat[] {
+  const rows = db.query<ListChatsQueryRow>(LIST_CHATS_QUERY, [limit]);
 
   const chats = rows.map((row) => {
     let participants: ListChatsQueryRowParticipant[] = [];
@@ -156,23 +158,4 @@ interface ListChatsQueryRowParticipant {
   id: string;
   /** The service used to communicate with the participant. */
   service: ChatParticipant["service"];
-}
-
-/**
- * Helper to convert Apple CoreData timestamp to JavaScript Date.
- * @param appleTimestamp The timestamp from the iMessage database.
- * @returns The corresponding JavaScript Date.
- */
-function convertAppleTime(appleTimestamp: number): Date {
-  if (appleTimestamp === 0) {
-    return new Date(0);
-  }
-
-  // Apple CoreData timestamps are in nanoseconds since 2001-01-01 UTC.
-  // JavaScript Date uses milliseconds since 1970-01-01 UTC.
-  //
-  // See https://www.epochconverter.com/coredata for more details.
-  const coreDataEpoch = Date.UTC(2001, 0, 1);
-  const timestampMilliseconds = appleTimestamp / 1_000_000;
-  return new Date(coreDataEpoch + timestampMilliseconds);
 }

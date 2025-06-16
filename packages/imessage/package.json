@@ -17,12 +17,12 @@
     "@repo/eslint-config": "*",
     "@repo/typescript-config": "*",
     "@types/node": "^20.0.0",
-    "@types/sqlite3": "^3.1.0",
     "eslint": "^9.26.0",
     "typescript": "^5.0.0"
   },
   "dependencies": {
+    "libsql": "^0.5.13",
     "node-osascript": "^2.1.0",
-    "sqlite3": "^5.1.0"
+    "pino": "^9.7.0"
   }
 }

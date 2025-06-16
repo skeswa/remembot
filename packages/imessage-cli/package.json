@@ -23,6 +23,7 @@
   },
   "dependencies": {
     "@remembot/imessage": "workspace:*",
-    "commander": "^14.0.0"
+    "commander": "^14.0.0",
+    "pino": "^9.7.0"
   }
 }

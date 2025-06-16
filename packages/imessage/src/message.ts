@@ -71,7 +71,7 @@ export interface RawMessage {
 export async function sendFileMessage(
   executor: AppleScriptExecutor,
   handle: Handle,
-  filePath: string
+  filePath: string,
 ): Promise<void> {
   const sanitizedHandleId = handle.id.replace(/"/g, '\\"');
   const sanitizedFilePath = filePath.replace(/"/g, '\\"');
@@ -102,7 +102,7 @@ end tell
 export async function sendMessage(
   executor: AppleScriptExecutor,
   handle: Handle,
-  text: string
+  text: string,
 ): Promise<void> {
   const sanitizedHandleId = handle.id.replace(/"/g, '\\"');
   const sanitizedText = text.replace(/"/g, '\\"');

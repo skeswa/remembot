@@ -85,12 +85,12 @@ program
 
       listener.on("message", (msg: Message) => {
         console.log(
-          `[${msg.date.toISOString()}] ${msg.isFromMe ? "Me" : (msg.handle.name ?? msg.handle.id)}: ${msg.text}`
+          `[${msg.date.toISOString()}] ${msg.isFromMe ? "Me" : (msg.handle.name ?? msg.handle.id)}: ${msg.text}`,
         );
 
         if (msg.attachedFile) {
           console.log(
-            `  Attachment: ${msg.attachedFile.path} (${msg.attachedFile.mimeType})`
+            `  Attachment: ${msg.attachedFile.path} (${msg.attachedFile.mimeType})`,
           );
         }
       });

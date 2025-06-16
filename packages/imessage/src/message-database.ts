@@ -40,7 +40,7 @@ export class MessageDatabase {
       os.homedir(),
       "Library",
       "Messages",
-      "chat.db"
+      "chat.db",
     );
 
     return new MessageDatabase(defaultDbPath);
@@ -90,7 +90,7 @@ export class MessageDatabase {
         `Failed to open iMessage DB ` +
           `- ensure this process has Full Disk Access ` +
           `(https://www.huntress.com/blog/ask-the-mac-guy-whats-the-deal-with-full-disk-access) ` +
-          `${error instanceof Error ? error.message : String(error)}`
+          `${error instanceof Error ? error.message : String(error)}`,
       );
     }
   }

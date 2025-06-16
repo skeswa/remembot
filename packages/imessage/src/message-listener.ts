@@ -35,7 +35,7 @@ export class MessageListener {
   constructor(
     private readonly db: MessageDatabase,
     private readonly logger: pino.Logger,
-    private readonly pollIntervalMs: number
+    private readonly pollIntervalMs: number,
   ) {}
 
   /**
@@ -58,7 +58,7 @@ export class MessageListener {
   public on(event: "error", listener: (error: unknown) => void): void;
   public on(
     event: "message" | "error",
-    listener: ((message: Message) => void) | ((error: unknown) => void)
+    listener: ((message: Message) => void) | ((error: unknown) => void),
   ): void {
     this.eventEmitter.on(event, listener);
   }
@@ -75,7 +75,7 @@ export class MessageListener {
 
     try {
       const result = this.db.query<{ maxId?: number }>(
-        "SELECT MAX(ROWID) as maxId FROM message;"
+        "SELECT MAX(ROWID) as maxId FROM message;",
       );
 
       const maxId = result[0]?.maxId;
@@ -92,11 +92,11 @@ export class MessageListener {
     } catch (err: unknown) {
       this.logger.error(
         { err },
-        "Failed to initialize last message ID for listening"
+        "Failed to initialize last message ID for listening",
       );
       this.eventEmitter.emit(
         "error",
-        new Error("Failed to initialize message listener")
+        new Error("Failed to initialize message listener"),
       );
 
       return;
@@ -164,7 +164,7 @@ LEFT JOIN chat_message_join cmj ON m.ROWID = cmj.message_id
 LEFT JOIN chat ON cmj.chat_id = chat.ROWID
 WHERE m.ROWID > ? AND (m.text IS NOT NULL OR att.filename IS NOT NULL)
 ORDER BY m.ROWID ASC;`,
-      [this.lastMessageRowId]
+      [this.lastMessageRowId],
     );
   }
 
@@ -188,7 +188,7 @@ ORDER BY m.ROWID ASC;`,
     if (this.isListening) {
       this.pollingTimeout = setTimeout(
         () => this.pollForAndEmitNewMessages(),
-        remainingTime
+        remainingTime,
       );
     }
   }

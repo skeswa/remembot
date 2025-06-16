@@ -17,18 +17,18 @@ export interface Handle {
 
 /**
  * Populates the name property for each handle by querying the Contacts app.
- * 
+ *
  * This function takes an array of handles and returns a new array where each handle
  * has its name property populated based on matching phone numbers or email addresses
  * in the Contacts app. If no matching contact is found, the name will be null.
- * 
+ *
  * @param executor The AppleScript executor to use for querying contacts
  * @param handles Array of handles to look up names for
  * @returns A promise that resolves with an array of handles with populated names
  */
 export async function applyNamesToHandles(
   executor: AppleScriptExecutor,
-  handles: Handle[]
+  handles: Handle[],
 ): Promise<Handle[]> {
   if (!handles || handles.length < 1) {
     return [];

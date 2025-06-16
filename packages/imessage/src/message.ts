@@ -120,7 +120,6 @@ end tell
   try {
     await executor.execute(script);
   } catch (error) {
-    console.error(`Failed to send message to ${handle.id}:`, error);
     throw new Error(`Failed to send message to ${handle.id}: ${error}`);
   }
 }

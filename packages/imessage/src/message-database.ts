@@ -53,7 +53,10 @@ export class MessageDatabase {
    *
    * @param dbPath The path to the iMessage database
    */
-  constructor(private readonly dbPath: string) {}
+  constructor(
+    /** File path to the iMessage database. */
+    readonly dbPath: string,
+  ) {}
 
   /**
    * Closes the iMessage database connection if open.

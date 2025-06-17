@@ -5,6 +5,7 @@
   "private": true,
   "scripts": {
     "dev": "bun run --hot ./src/index.ts",
+    "clean": "rm -rf dist",
     "build": "bun build --compile --minify --sourcemap --outfile ./dist/courier ./src/index.ts",
     "start": "./dist/courier",
     "test": "bun test",

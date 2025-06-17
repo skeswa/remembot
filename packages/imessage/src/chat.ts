@@ -5,166 +5,159 @@
  * Handles chat metadata, last message, and participant resolution.
  */
 
-import os from "os";
-
-import { queryDb } from "@/db";
-import type { Handle } from "@/handle";
-import type { Message } from "@/message";
+import type { Handle } from "./handle";
+import { convertAppleTime } from "./helpers";
+import { MessageDatabase } from "./message-database";
+import type { Service } from "./service";
 
 /**
- * Represents a chat (group or 1:1) in iMessage, including participants and last message.
+ * Represents a chat (group or 1:1) in iMessage, including participants and last
+ * message.
  */
 export interface Chat {
   /** Name of the chat (e.g., contact name or group name). */
-  readonly displayName: string;
+  displayName: string;
   /** Unique chat ID (group or 1:1). */
-  readonly id: string;
-  /** Last message in the chat, or null if none. */
-  readonly lastMessage: Message | null;
+  guid: string;
+  /** Information about the most recent message in the chat. */
+  mostRecentMessageSummary: {
+    messageGuid: string;
+    messageTime: Date;
+  } | null;
   /** Handles of participants. */
-  readonly participants: readonly string[];
-  /** Optional: number of unread messages. */
-  readonly unreadCount?: number;
+  participants: ChatParticipant[];
+  /** Number of unread messages. */
+  unreadMessageCount: number;
 }
 
 /**
- * Gets recent chats from the iMessage database, including their last message and participants.
- *
- * @param limit The number of recent chats to return. Defaults to 10.
- * @returns A promise that resolves with an array of chats.
+ * Represents a participant in a chat, including their handle and service.
  */
-export async function getRecentChats(limit: number = 10): Promise<Chat[]> {
-  const query = `
-    SELECT
-      c.ROWID AS chat_id,
-      c.chat_identifier,
-      c.display_name,
-      c.service_name,
-      m.text AS last_message_text,
-      m.date AS last_message_date,
-      m.is_from_me AS last_message_is_from_me,
-      m.guid AS last_message_guid,
-      h_sender.id AS last_message_handle_id,
-      (SELECT filename FROM attachment WHERE ROWID = (SELECT attachment_id FROM message_attachment_join WHERE message_id = m.ROWID LIMIT 1)) AS attachment_path,
-      (SELECT mime_type FROM attachment WHERE ROWID = (SELECT attachment_id FROM message_attachment_join WHERE message_id = m.ROWID LIMIT 1)) AS attachment_mime_type
-    FROM chat c
-    JOIN chat_message_join cmj ON c.ROWID = cmj.chat_id
-    JOIN message m ON cmj.message_id = m.ROWID
-    LEFT JOIN handle h_sender ON m.handle_id = h_sender.ROWID
-    WHERE m.ROWID = (
-      SELECT MAX(message.ROWID)
-      FROM message
-      JOIN chat_message_join AS latest_cmj ON message.ROWID = latest_cmj.message_id
-      WHERE latest_cmj.chat_id = c.ROWID
-    )
-    ORDER BY m.date DESC
-    LIMIT ?;
-  `;
+export interface ChatParticipant extends Handle {
+  /** Service used to communicate with the participant. */
+  service: Service;
+}
 
-  const rawChats = await queryDb<RawChatMessage>(query, [limit]);
+/**
+ * Summarizes chats from the iMessage database, including their last message
+ * and participants.
+ *
+ * @param limit the number of chat summaries to return - defaults to 10
+ * @returns a promise that resolves with an array of chat summaries
+ */
+export function listChats(db: MessageDatabase, limit: number = 10): Chat[] {
+  const rows = db
+    .query<ListChatsQueryRow>(LIST_CHATS_QUERY, [limit])
+    .slice(0, limit);
 
-  if (!rawChats || rawChats.length < 1) {
-    return [];
-  }
-
-  const chatIds = rawChats.map((rc) => rc.chatId);
-
-  const participantsQuery = `
-    SELECT
-      chj.chat_id,
-      h.id AS handle_id
-    FROM chat_handle_join chj
-    JOIN handle h ON chj.handle_id = h.ROWID
-    WHERE chj.chat_id IN (${chatIds.map(() => "?").join(",")});
-  `;
-  const rawParticipants = await queryDb<RawChatParticipant>(
-    participantsQuery,
-    chatIds,
-  );
-
-  // Map of chatId to array of participant handles
-  const participantsByChatId = new Map<number, Handle[]>();
-  for (const rp of rawParticipants) {
-    if (!participantsByChatId.has(rp.chatId)) {
-      participantsByChatId.set(rp.chatId, []);
+  const chats = rows.map((row) => {
+    let participants: ListChatsQueryRowParticipant[] = [];
+    try {
+      participants = JSON.parse(row.participantsJson);
+    } catch {
+      // Ignore errors parsing the participants JSON.
     }
-    participantsByChatId.get(rp.chatId)!.push(rp.handleId);
-  }
 
-  const chats: Chat[] = rawChats.map((rc) => {
-    let lastMessage: Message | null = null;
-    if (rc.lastMessageGuid) {
-      lastMessage = {
-        guid: rc.lastMessageGuid,
-        text: rc.lastMessageText,
-        handle: rc.lastMessageHandleId,
-        group: rc.chatIdentifier.startsWith("chat") ? rc.chatIdentifier : null,
-        date: convertAppleTime(rc.lastMessageDate),
-        fromMe: !!rc.lastMessageIsFromMe,
-        file: rc.attachmentPath
-          ? rc.attachmentPath.replace(/^~\//, os.homedir() + "/")
-          : null,
-        fileType: rc.attachmentMimeType,
-      };
-    }
+    const participantHandles = participants.map(
+      (participant: ListChatsQueryRowParticipant) => ({
+        id: participant.id,
+        name: null,
+        service: participant.service,
+      }),
+    );
 
     return {
-      id: rc.chatIdentifier,
-      displayName: rc.displayName || rc.chatIdentifier,
-      lastMessage,
-      participants: participantsByChatId.get(rc.chatId) || [],
+      displayName: row.displayName,
+      guid: row.guid,
+      mostRecentMessageSummary: row.mostRecentMessageGuid
+        ? {
+            messageGuid: row.mostRecentMessageGuid,
+            messageTime: convertAppleTime(row.mostRecentMessageDate),
+          }
+        : null,
+      participants: participantHandles,
+      unreadMessageCount: row.unreadMessageCount,
     };
   });
 
   return chats;
 }
 
-/**
- * Represents a raw chat message as returned from the @remembot/imessage database query.
- */
-interface RawChatMessage {
-  /** Path to the last message's attachment, or null if none. */
-  readonly attachmentMimeType: string | null;
-  /** Path to the last message's attachment, or null if none. */
-  readonly attachmentPath: string | null;
-  /** Unique numeric ID for the chat (ROWID). */
-  readonly chatId: number;
-  /** Unique identifier for the chat (e.g., group or 1:1). */
-  readonly chatIdentifier: string;
-  /** Display name for the chat, or null if not set. */
-  readonly displayName: string | null;
-  /** GUID of the last message. */
-  readonly lastMessageGuid: string;
-  /** Handle ID of the sender of the last message. */
-  readonly lastMessageHandleId: string;
-  /** Whether the last message was sent by the user. */
-  readonly lastMessageIsFromMe: boolean;
-  /** Text of the last message in the chat, or null if not available. */
-  readonly lastMessageText: string | null;
-  /** Timestamp of the last message (Apple CoreData format). */
-  readonly lastMessageDate: number;
-  /** Name of the service (e.g., iMessage, SMS). */
-  readonly serviceName: string;
+/** Query to list chats from the iMessage database. */
+const LIST_CHATS_QUERY = `
+WITH LastMessage AS (
+  -- Find the most recent message for each chat
+  SELECT
+    cmj.chat_id,
+    m.guid AS message_guid,
+    m.date AS message_date,
+    -- Use ROW_NUMBER to pick only the latest message per chat
+    ROW_NUMBER() OVER(PARTITION BY cmj.chat_id ORDER BY m.date DESC) as rn
+  FROM chat_message_join cmj
+  JOIN message m ON cmj.message_id = m.ROWID
+),
+UnreadCounts AS (
+  -- Count unread messages for each chat
+  SELECT
+    cmj.chat_id,
+    COUNT(m.ROWID) as unread_count
+  FROM chat_message_join cmj
+  JOIN message m ON cmj.message_id = m.ROWID
+  WHERE m.is_read = 0 AND m.is_from_me = 0
+  GROUP BY cmj.chat_id
+),
+Participants AS (
+  -- Aggregate all participants for each chat into a single JSON array
+  SELECT
+    chj.chat_id,
+    json_group_array(
+      json_object('id', h.id, 'service', h.service)
+    ) as participants_json
+  FROM chat_handle_join chj
+  JOIN handle h ON chj.handle_id = h.ROWID
+  GROUP BY chj.chat_id
+)
+-- Final SELECT statement to assemble the chat objects
+SELECT
+  c.guid,
+  c.display_name AS displayName,
+  p.participants_json AS participantsJson,
+  -- Ensure unread count is 0 if there are no unread messages
+  COALESCE(uc.unread_count, 0) AS unreadMessageCount,
+  lm.message_guid AS mostRecentMessageGuid,
+  lm.message_date AS mostRecentMessageDate
+FROM chat c
+-- Join the pre-calculated CTEs to the main chat table
+LEFT JOIN Participants p ON c.ROWID = p.chat_id
+LEFT JOIN UnreadCounts uc ON c.ROWID = uc.chat_id
+LEFT JOIN LastMessage lm ON c.ROWID = lm.chat_id AND lm.rn = 1
+-- Exclude archived chats from the results
+WHERE c.is_archived = 0
+-- Order chats by the most recent message date, descending
+ORDER BY lm.message_date DESC
+LIMIT ?;
+`;
+
+/** A single row resulting from executing `LIST_CHATS_QUERY`. */
+interface ListChatsQueryRow {
+  /** Name of the chat (e.g., contact name or group name). */
+  displayName: string;
+  /** Unique chat ID (group or 1:1). */
+  guid: string;
+  /** Uniquely identifies the most recent message in the chat. */
+  mostRecentMessageGuid: string;
+  /** When the most recent message in the chat was sent. */
+  mostRecentMessageDate: number;
+  /** Serialized JSON array of participant handle objects. */
+  participantsJson: string;
+  /** Number of unread messages. */
+  unreadMessageCount: number;
 }
 
-/**
- * Represents a participant in a chat as returned from the iMessage database query.
- */
-interface RawChatParticipant {
-  /** Numeric chat ID (ROWID) this participant belongs to. */
-  readonly chatId: number;
-  /** Handle ID of the participant. */
-  readonly handleId: string;
-}
-
-// --- Non-exported helpers ---
-
-/**
- * Helper to convert Apple CoreData timestamp to JavaScript Date.
- * @param appleTimestamp The timestamp from the iMessage database.
- * @returns The corresponding JavaScript Date.
- */
-function convertAppleTime(appleTimestamp: number): Date {
-  if (appleTimestamp === 0) return new Date(0);
-  return new Date(Date.UTC(2001, 0, 1) + appleTimestamp * 1000);
+/** A single participant in a chat as returned from the iMessage database query. */
+interface ListChatsQueryRowParticipant {
+  /** The unique ID of the participant (e.g., phone number or email). */
+  id: string;
+  /** The service used to communicate with the participant. */
+  service: ChatParticipant["service"];
 }

@@ -106,7 +106,6 @@ This project uses several tools to ensure code quality and maintainability:
 - [TypeScript](https://www.typescriptlang.org/) for static type checking
 - [ESLint](https://eslint.org/) for code linting
 - [Prettier](https://prettier.io) for code formatting
-- [Jest](https://jestjs.io/) for testing
 - [Turborepo](https://turbo.build/repo) for monorepo management
 - [Changesets](https://github.com/changesets/changesets) for versioning and changelog management
 

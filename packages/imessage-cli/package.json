@@ -1,5 +1,5 @@
 {
-  "name": "@remembot/imessage",
+  "name": "@remembot/imessage-cli",
   "version": "0.1.0",
   "publishedVersion": "0.1.0",
   "type": "module",
@@ -9,6 +9,7 @@
   "scripts": {
     "build": "tsc",
     "clean": "rm -rf dist",
+    "cli": "bun run ./src/index.ts",
     "lint": "eslint . --ext .ts,.tsx --report-unused-disable-directives --max-warnings 0",
     "check-types": "tsc --noEmit"
   },
@@ -16,13 +17,13 @@
     "@eslint/js": "^9.26.0",
     "@repo/eslint-config": "*",
     "@repo/typescript-config": "*",
-    "@types/node": "^20.0.0",
     "eslint": "^9.26.0",
+    "@types/node": "^20.0.0",
     "typescript": "^5.0.0"
   },
   "dependencies": {
-    "libsql": "^0.5.13",
-    "node-osascript": "^2.1.0",
+    "@remembot/imessage": "workspace:*",
+    "commander": "^14.0.0",
     "pino": "^9.7.0"
   }
 }

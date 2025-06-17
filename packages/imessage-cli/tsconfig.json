@@ -3,25 +3,22 @@
   "compilerOptions": {
     "baseUrl": ".",
     "composite": true,
-    "declaration": true,
-    "declarationMap": true,
-    "emitDeclarationOnly": false,
     "outDir": "./dist",
     "paths": {
       "@/*": [
         "src/*"
       ]
     },
-    "preserveSymlinks": true,
-    "preserveWatchOutput": true,
-    "removeComments": false,
     "rootDir": "src"
   },
+  "references": [
+    {
+      "path": "../imessage"
+    }
+  ],
   "exclude": [
     "node_modules",
-    "dist",
-    "**/*.test.ts",
-    "**/*.spec.ts"
+    "dist"
   ],
   "include": [
     "src/**/*.ts"

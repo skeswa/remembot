@@ -46,7 +46,7 @@ export async function applyNamesToHandles(
       id: handle.id,
       name: results[index] as string | null,
     }));
-  } catch (error) {
+  } catch {
     return handles.map((handle) => ({ ...handle, name: null }));
   }
 }

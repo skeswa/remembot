@@ -54,7 +54,7 @@ export function listChats(db: MessageDatabase, limit: number = 10): Chat[] {
     let participants: ListChatsQueryRowParticipant[] = [];
     try {
       participants = JSON.parse(row.participantsJson);
-    } catch (err: unknown) {
+    } catch {
       // Ignore errors parsing the participants JSON.
     }
 

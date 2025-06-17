@@ -2,13 +2,15 @@ import { describe, expect, test, mock } from "bun:test";
 import { AppleScriptExecutor } from "./applescript";
 
 mock.module("node-osascript", () => ({
-  execute: mock((script: string, _: unknown, callback: Function) => {
-    if (script.includes("error")) {
-      callback(new Error("Test error"), null, null);
-    } else {
-      callback(null, "Test result", "Raw output");
-    }
-  }),
+  execute: mock(
+    (script: string, _: unknown, callback: (...args: unknown[]) => void) => {
+      if (script.includes("error")) {
+        callback(new Error("Test error"), null, null);
+      } else {
+        callback(null, "Test result", "Raw output");
+      }
+    },
+  ),
 }));
 
 describe("AppleScriptExecutor", () => {
@@ -30,9 +32,11 @@ describe("AppleScriptExecutor", () => {
   test("should handle non-Error objects in error handling", async () => {
     // Mock the module to throw a non-Error object
     mock.module("node-osascript", () => ({
-      execute: mock((_: string, __: unknown, callback: Function) => {
-        callback("String error", null, null);
-      }),
+      execute: mock(
+        (_: string, __: unknown, callback: (...args: unknown[]) => void) => {
+          callback("String error", null, null);
+        },
+      ),
     }));
 
     const executor = new AppleScriptExecutor();

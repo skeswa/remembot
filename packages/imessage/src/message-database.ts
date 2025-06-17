@@ -106,11 +106,7 @@ export class MessageDatabase {
    * @throws {Error} If the query fails to execute.
    */
   public query<T>(sql: string, params: unknown[] = []): T[] {
-    try {
-      return this.dbOrDie().prepare(sql).all(params) as T[];
-    } catch (error) {
-      throw error;
-    }
+    return this.dbOrDie().prepare(sql).all(params) as T[];
   }
 
   /**

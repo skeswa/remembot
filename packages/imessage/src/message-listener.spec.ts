@@ -1,8 +1,10 @@
 import { describe, expect, test, mock, beforeEach, afterEach } from "bun:test";
+import type { Mock } from "bun:test";
+import pino from "pino";
+
 import { MessageListener } from "./message-listener";
 import { MessageDatabase } from "./message-database";
-import type { Message, RawMessage } from "./message";
-import pino from "pino";
+import type { RawMessage } from "./message";
 
 describe("MessageListener", () => {
   let mockDb: MessageDatabase;
@@ -10,8 +12,7 @@ describe("MessageListener", () => {
   let listener: MessageListener;
 
   beforeEach(() => {
-    // Mock the database
-    const mockQuery = mock((sql: string, _: unknown[] = []) => {
+    const mockQuery = mock((sql: string) => {
       if (sql.includes("MAX(ROWID)")) {
         return [{ maxId: 100 }];
       }
@@ -40,7 +41,6 @@ describe("MessageListener", () => {
       close: mock(() => {}),
     } as unknown as MessageDatabase;
 
-    // Mock the logger
     mockLogger = {
       info: mock(() => {}),
       debug: mock(() => {}),
@@ -82,9 +82,17 @@ describe("MessageListener", () => {
 
     test("should not start listening if already listening", () => {
       listener.startListening();
-      const initialCallCount = (mockDb.query as any).mock.calls.length;
+
+      const queryCall = mockDb.query as Mock<
+        (sql: string) =>
+          | RawMessage[]
+          | {
+              maxId: number;
+            }[]
+      >;
+      const initialCallCount = queryCall.mock.calls.length;
       listener.startListening();
-      expect((mockDb.query as any).mock.calls.length).toBe(initialCallCount);
+      expect(queryCall.mock.calls.length).toBe(initialCallCount);
     });
   });
 
@@ -100,7 +108,7 @@ describe("MessageListener", () => {
 
   describe("message events", () => {
     test("should emit message events for new messages", () => {
-      const messageHandler = mock((_: Message) => {});
+      const messageHandler = mock(() => {});
       listener.on("message", messageHandler);
 
       listener.startListening();

@@ -7,7 +7,7 @@ mock.module("libsql", () => {
   const mockDb = {
     close: mock(() => {}),
     prepare: mock((sql: string) => ({
-      all: mock((_: unknown[]) => {
+      all: mock(() => {
         if (sql.includes("error")) {
           throw new Error("Test database error");
         }
@@ -17,7 +17,7 @@ mock.module("libsql", () => {
   };
 
   return {
-    default: mock((dbPath: string, _: { readonly: boolean }) => {
+    default: mock((dbPath: string) => {
       if (dbPath.includes("error")) {
         throw new Error("Failed to open database");
       }

@@ -3,6 +3,7 @@
   "private": true,
   "scripts": {
     "build": "turbo run build",
+    "clean": "turbo run clean",
     "check-types": "turbo run check-types",
     "dev": "turbo run dev",
     "fmt": "prettier --write \"**/*.{ts,tsx,md}\"",

@@ -5,8 +5,8 @@
   "private": true,
   "scripts": {
     "dev": "dotenv -- next dev --turbopack",
-    "build": "next build",
     "clean": "rm -rf dist",
+    "build": "next build",
     "start": "next start",
     "lint": "next lint --max-warnings 0",
     "check-types": "tsc --noEmit"

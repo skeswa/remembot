@@ -1,9 +1,10 @@
 {
   "name": "@remembot/imessage",
   "version": "0.2.0",
-  "publishedVersion": "0.2.0",
   "type": "module",
-  "private": true,
+  "deploy": {
+    "strategy": "npm"
+  },
   "main": "./src/index.ts",
   "types": "./src/index.ts",
   "scripts": {

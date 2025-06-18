@@ -18,13 +18,62 @@ on:
 concurrency: deploy-app_${{ github.ref }}_${{ inputs.app_name }}
 
 jobs:
-  deploy-app:
-    name: Deploy App
+  pre-deploy:
+    name: Pre-deploy
     runs-on: ubuntu-latest
+    outputs:
+      strategy: ${{ steps.check_k8s.outputs.strategy }}
     steps:
       # Checkout the repository code.
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      # Read the "deployment" field from the app's package.json to determine
+      # the deployment strategy.
+      - name: Read deployment strategy
+        id: check_k8s
+        run: |
+          PACKAGE_JSON_PATH="apps/${{ inputs.app_name }}/package.json"
+          if [ ! -f "$PACKAGE_JSON_PATH" ]; then
+            echo "strategy=none" >> $GITHUB_OUTPUT
+            echo "No package.json found for ${{ inputs.app_name }}."
+            exit 0
+          fi
+
+          DEPLOYMENT_STRATEGY=$(jq -r '.deploy.strategy' "$PACKAGE_JSON_PATH")
+
+          if [ -z "$DEPLOYMENT_STRATEGY" ] || [ "$DEPLOYMENT_STRATEGY" == "null" ]; then
+            echo "strategy=none" >> $GITHUB_OUTPUT
+            echo "No deployment strategy found for ${{ inputs.app_name }}."
+          else
+            echo "strategy=$DEPLOYMENT_STRATEGY" >> $GITHUB_OUTPUT
+            echo "Deployment strategy for ${{ inputs.app_name }} is '$DEPLOYMENT_STRATEGY'."
+          fi
+
+  deploy-k8s:
+    name: Deploy to k8s
+    runs-on: ubuntu-latest
+    needs: pre-deploy
+    if: needs.pre-deploy.outputs.strategy == 'k8s'
+    steps:
+      # Checkout the repository code.
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Read the path to the app's k8s configuration directory from its
+      # package.json.
+      - name: Read k8s config directory path
+        id: k8s-config
+        run: |
+          PACKAGE_JSON_PATH="apps/${{ inputs.app_name }}/package.json"
+          # Default to "k8s" if not specified for backward compatibility.
+          CONFIG_DIR_PATH=$(jq -r '.deploy.k8s.configDirPath // "k8s"' "$PACKAGE_JSON_PATH")
+
+          # Path might start with "./", remove it for cleaner paths.
+          CLEAN_CONFIG_DIR_PATH=$(echo "$CONFIG_DIR_PATH" | sed 's#^\./##')
+          APP_K8S_PATH="apps/${{ inputs.app_name }}/${CLEAN_CONFIG_DIR_PATH}"
+          echo "path=$APP_K8S_PATH" >> $GITHUB_OUTPUT
+          echo "Using k8s config from: $APP_K8S_PATH"
 
       # Install kubectl for Kubernetes cluster interaction.
       - name: Set up kubectl
@@ -34,20 +83,20 @@ jobs:
 
       # Read the deployment target from the app's k8s configuration.
       # This determines which environment (e.g., DEV, PROD) to deploy to.
-      - name: Read deployment target
+      - name: Read kubeconfig secret name
         id: target
         run: |
-          TARGET=$(cat apps/${{ inputs.app_name }}/k8s/target.yaml | tr -d '[:space:]' | tr '[:lower:]' '[:upper:]')
-          echo "target=$TARGET" >> $GITHUB_OUTPUT
-          echo "Using deployment target: $TARGET"
+          SECRET_NAME=$(yq -r '.spec.kubeconfig.secret.name' ${{ steps.k8s-config.outputs.path }}/target.yaml)
+          echo "secret_name=$SECRET_NAME" >> $GITHUB_OUTPUT
+          echo "Using kubeconfig secret: $SECRET_NAME"
 
       # Verify that the required kubeconfig secret exists for the target
       # environment. This secret contains the Kubernetes cluster credentials.
       - name: Validate kubeconfig secret exists
         id: validate-kubeconfig-secret
         run: |
-          SECRET_NAME="${{ steps.target.outputs.target }}_KUBECONFIG"
-          KUBECONFIG="${{ secrets[format('{0}_KUBECONFIG', steps.target.outputs.target)] }}"
+          SECRET_NAME="${{ steps.target.outputs.secret_name }}"
+          KUBECONFIG="${{ secrets[steps.target.outputs.secret_name] }}"
           if [ -z "$KUBECONFIG" ]; then
             echo "::error::Required secret '$SECRET_NAME' is not set. Please add this secret to the repository."
             exit 1
@@ -68,7 +117,7 @@ jobs:
       - name: Applying ${{ inputs.app_name }} k8s configuration
         run: |
           echo "Applying ${{ inputs.app_name }} k8s configuration..."
-          APP_K8S_PATH="apps/${{ inputs.app_name }}/k8s"
+          APP_K8S_PATH="${{ steps.k8s-config.outputs.path }}"
 
           # Define the specific order of files to ensure proper resource creation.
           # Namespace must be created first, followed by core resources, then networking.

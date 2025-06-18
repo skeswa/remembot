@@ -1,7 +1,6 @@
 {
   "name": "@remembot/imessage-cli",
   "version": "0.2.0",
-  "publishedVersion": "0.2.0",
   "type": "module",
   "private": true,
   "main": "./src/index.ts",

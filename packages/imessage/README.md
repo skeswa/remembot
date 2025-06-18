@@ -23,91 +23,87 @@ This package is inspired by [`better-osa-imessage`](https://github.com/Bubba8291
 ## How It Works
 
 - **Sending messages/files:** Uses AppleScript via `node-osascript` to control the Messages app.
-- **Receiving messages:** Polls the local iMessage SQLite database (`chat.db`) for new messages and emits them as events.
-- **Contact resolution:** Uses AppleScript to query the Contacts app for handles and names.
-- **Chat queries:** Reads from the iMessage database to provide chat and participant metadata.
+- **Receiving messages:** Polls the local iMessage SQLite database (`chat.db`) for new messages and emits them as events via the `MessageListener`.
+- **Contact resolution:** Reads from the iMessage database to provide `Handle` metadata.
+- **Chat queries:** Reads from the iMessage database to provide `Chat` metadata.
 
-## Architecture
+## Usage
 
-### High-Level Overview
+Before using the API, you need to instantiate an `AppleScriptExecutor` for sending messages and a `MessageDatabase` for querying chat information.
 
-```mermaid
-graph TD
-  A[Your Node.js App] -- API Calls --> B(@remembot/imessage package)
-  B -- AppleScript (OSA) --> C(Messages.app & Contacts.app)
-  B -- SQLite Queries --> D[chat.db (iMessage database)]
-  C -- Sends/Receives Messages --> E[Apple iMessage Service]
-  D -- Stores Messages/Chats --> B
-```
+The following example shows how to set up the necessary components and use the main features of the library.
 
-### Internal Module Structure
-
-```mermaid
-graph TD
-  subgraph @remembot/imessage
-    I1[index.ts]
-    I2[applescript.ts]
-    I3[db.ts]
-    I4[message.ts]
-    I5[chat.ts]
-    I6[contact.ts]
-    I7[types.ts]
-  end
-  I1 -- send/sendFile --> I2
-  I1 -- listen --> I4
-  I1 -- getRecentChats --> I5
-  I1 -- handleForName/nameForHandle --> I6
-  I4 -- queryDb --> I3
-  I5 -- queryDb --> I3
-  I6 -- executeAppleScript --> I2
-  I2 -- node-osascript --> OSA[AppleScript]
-  I3 -- sqlite3 --> DB[chat.db]
-```
-
-## Public API
-
-### Send a message
+> **Note:** To query the iMessage database, you must grant **Full Disk Access** to your terminal application (e.g., Terminal, iTerm2) or the application running your Node.js script.
 
 ```ts
-import { send } from "@remembot/imessage";
-await send("+15555555555", "Hello World!");
-```
+import {
+  AppleScriptExecutor,
+  MessageDatabase,
+  MessageListener,
+  applyNamesToHandles,
+  listChats,
+  sendMessage,
+  sendFileMessage,
+} from "@remembot/imessage";
+import pino from "pino";
 
-### Send a file
+// Executor for sending messages and interacting with Contacts.
+const executor = new AppleScriptExecutor();
 
-```ts
-import { sendFile } from "@remembot/imessage";
-await sendFile("+15555555555", "/path/to/file.png");
-```
+// Database for querying chat history.
+const db = MessageDatabase.default();
 
-### Listen for new messages
+// You must open the database connection before using it.
+db.open();
 
-```ts
-import { listen } from "@remembot/imessage";
-listen().on("message", (msg) => {
-  if (!msg.fromMe) console.log(`Received: ${msg.text}`);
+// --- Examples ---
+
+// 1. Send a message
+// The handle can be a phone number, email, or chat ID.
+const handle = { id: "+15555555555", name: null };
+await sendMessage(executor, handle, "Hello from Remembot!");
+
+// 2. Send a file with an optional message
+const filePath = "/path/to/your/image.jpg";
+await sendFileMessage(executor, handle, filePath);
+
+// 3. Get recent chats
+// Get the 10 most recent chats.
+const recentChats = listChats(db, 10);
+
+// 4. Add contact names to chats
+// Enrich chat participants with names from your Contacts app.
+const chatsWithNames = await applyNamesToHandles(
+  executor,
+  recentChats.flatMap((c) => c.participants)
+);
+console.log(JSON.stringify(chatsWithNames, null, 2));
+
+// 5. Listen for new messages
+const logger = pino();
+// Poll every 5 seconds.
+const listener = new MessageListener(db, logger, 5000);
+
+listener.on("message", (msg) => {
+  if (!msg.fromMe) {
+    console.log(`Received: ${msg.text} from ${msg.handle.id}`);
+  }
 });
-```
 
-### Get a handle for a contact name
+listener.on("error", (err) => {
+  console.error("Message listener error:", err);
+});
 
-```ts
-import { handleForName } from "@remembot/imessage";
-const handle = await handleForName("Tim Cook");
-```
+listener.startListening();
+console.log("Listening for new messages...");
 
-### Get the name for a handle
+// --- Cleanup ---
 
-```ts
-import { nameForHandle } from "@remembot/imessage";
-const name = await nameForHandle("+15555555555");
-```
-
-### Get recent chats
-
-```ts
-import { getRecentChats } from "@remembot/imessage";
-const chats = await getRecentChats(10);
+// When you're done, stop the listener and close the database connection.
+// This is important for graceful shutdown.
+//
+// listener.stopListening();
+// db.close();
 ```
 
 ## Types
@@ -115,6 +111,7 @@ const chats = await getRecentChats(10);
 - `Message`: Represents a single iMessage (text, sender, group, attachments, etc.)
 - `Chat`: Represents a chat (group or 1:1), with participants and last message
 - `Handle`: A phone, email, or group chat ID
+- `AttachedFile`: Represents a file attached to a message.
 
 ## Requirements
 

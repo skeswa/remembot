@@ -3,9 +3,8 @@
   "version": "0.2.5",
   "type": "module",
   "private": true,
-  "deploy": {
-    "strategy": "git-poller",
-    "version": "0.2.5"
+  "release": {
+    "strategy": "local"
   },
   "scripts": {
     "dev": "bun run --hot ./src/index.ts",

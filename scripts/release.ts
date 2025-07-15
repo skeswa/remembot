@@ -68,22 +68,35 @@ interface PackageJson {
   name: string;
   /** Version in package.json. */
   version: string;
-  /** Deployment strategy for the app. */
-  deploy?:
+  /** Release strategy for the app. */
+  release?:
     | {
         strategy: "k8s";
         k8s: {
           configDirPath: string;
         };
-        version?: string;
-      }
-    | {
-        strategy: "git-poller";
-        version?: string;
+        deploy?: {
+          timestamp: string;
+          version: string;
+        };
+        publish?: {
+          timestamp: string;
+          version: string;
+        };
       }
     | {
         strategy: "npm";
-        version?: string;
+        publish?: {
+          timestamp: string;
+          version: string;
+        };
+      }
+    | {
+        strategy: "local";
+        publish?: {
+          timestamp: string;
+          version: string;
+        };
       };
 }
 
@@ -123,7 +136,9 @@ function readPackageJsons(): PackageJson[] {
  */
 function readPackageJsonsOfChangedPackages(): PackageJson[] {
   return readPackageJsons()
-    .filter(({ deploy, version }) => deploy && deploy.version !== version)
+    .filter(
+      ({ release, version }) => release && version !== release.publish?.version
+    )
     .sort((a, b) => a.name.localeCompare(b.name));
 }
 

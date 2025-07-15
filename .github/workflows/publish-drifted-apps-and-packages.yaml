@@ -1,0 +1,125 @@
+# Standalone workflow that publishes any apps or packages having versions
+# differing from their published/deployed versions based on the release field in
+# package.json.
+#
+# This workflow is designed to be triggered by:
+# - `release.yaml` following the creation of a new release
+# - Manual workflow dispatch
+
+name: Publish Drifted Apps & Packages
+
+on:
+  # Allows you to call this workflow from another one.
+  workflow_call:
+
+  # Allows you to run this workflow manually from the Actions tab.
+  workflow_dispatch:
+
+concurrency: publish-drifted-apps-and-packages_${{ github.ref }}
+
+jobs:
+  # Find all apps and packages having versions differing from their published versions.
+  find-drifted-apps-and-packages:
+    name: Find Drifted Apps & Packages
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      # Checkout the repository code.
+      - name: Checkout Repo
+        uses: actions/checkout@v4
+
+      # Create a matrix of packages having versions differing from their published versions.
+      - name: Set matrix
+        id: set-matrix
+        run: |
+          # Initialize arrays for the matrix
+          MATRIX_ITEMS="["
+          MATRIX_INCLUDE="["
+
+          # Function to process a package
+          process_package() {
+            local dir=$1
+            local type=$2
+            local name=$(basename $dir)
+            
+            PKG_JSON="$dir/package.json"
+            if [ ! -f "$PKG_JSON" ]; then
+              echo "No package.json for $name, skipping"
+              return
+            fi
+
+            # Extract package version and release strategy
+            PACKAGE_VERSION=$(node -p "require('./$PKG_JSON').version")
+            RELEASE_STRATEGY=$(node -p "require('./$PKG_JSON').release?.strategy || 'none'")
+            
+            # Skip if no release strategy or strategy is 'local'
+            if [ "$RELEASE_STRATEGY" = "none" ] || [ "$RELEASE_STRATEGY" = "local" ]; then
+              echo "Skipping $name - release strategy: $RELEASE_STRATEGY"
+              return
+            fi
+
+            # Extract published version based on strategy
+            if [ "$RELEASE_STRATEGY" = "k8s" ]; then
+              PUBLISHED_VERSION=$(node -p "require('./$PKG_JSON').release?.publish?.version || 'not yet published'")
+              WORKFLOW="publish-app"
+            elif [ "$RELEASE_STRATEGY" = "npm" ]; then
+              PUBLISHED_VERSION=$(node -p "require('./$PKG_JSON').release?.publish?.version || 'not yet published'")
+              WORKFLOW="publish-package"
+            else
+              echo "Unknown release strategy for $name: $RELEASE_STRATEGY"
+              return
+            fi
+
+            echo "$type: $name"
+            echo "Release strategy: $RELEASE_STRATEGY"
+            echo "Package version: $PACKAGE_VERSION"
+            echo "Published version: $PUBLISHED_VERSION"
+
+            # Compare versions and add to matrix if they differ
+            if [ "$PACKAGE_VERSION" != "$PUBLISHED_VERSION" ]; then
+              echo "Versions differ for $name - adding to matrix"
+              MATRIX_ITEMS+="\"$name\","
+              MATRIX_INCLUDE+="{\"name\":\"$name\",\"type\":\"$type\",\"strategy\":\"$RELEASE_STRATEGY\",\"workflow\":\"$WORKFLOW\"},"
+            else
+              echo "Versions match for $name - skipping"
+            fi
+            echo "---"
+          }
+
+          # Process all apps
+          echo "Processing apps..."
+          for dir in apps/*; do
+            [ -d "$dir" ] && process_package "$dir" "app"
+          done
+
+          # Process all packages
+          echo "Processing packages..."
+          for dir in packages/*; do
+            [ -d "$dir" ] && process_package "$dir" "package"
+          done
+
+          # Remove trailing comma and close arrays
+          MATRIX_ITEMS="${MATRIX_ITEMS%,}]"
+          MATRIX_INCLUDE="${MATRIX_INCLUDE%,}]"
+
+          # Create the final matrix JSON
+          MATRIX="{\"name\":$MATRIX_ITEMS,\"include\":$MATRIX_INCLUDE}"
+
+          echo "matrix=$MATRIX" >> $GITHUB_OUTPUT
+          echo "Generated matrix: $MATRIX"
+
+  # Publish all drifted apps and packages using the combined workflow
+  publish-apps-and-packages:
+    name: Publish ${{ matrix.type }} - ${{ matrix.name }}
+    needs: find-drifted-apps-and-packages
+    if: ${{ fromJson(needs.find-drifted-apps-and-packages.outputs.matrix).name[0] != null }}
+    strategy:
+      matrix:
+        include: ${{ fromJson(needs.find-drifted-apps-and-packages.outputs.matrix).include }}
+      fail-fast: false
+    uses: ./.github/workflows/publish-app-or-package.yaml
+    secrets: inherit
+    with:
+      package_name: ${{ matrix.name }}
+      package_type: ${{ matrix.type }}

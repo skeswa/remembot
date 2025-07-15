@@ -12,7 +12,7 @@ on:
 concurrency: deploy-all-apps_${{ github.ref }}
 
 jobs:
-  # Find all apps with k8s directories.
+  # Find all apps with k8s deployment strategy.
   find-apps:
     name: Find Apps
     runs-on: ubuntu-latest
@@ -27,14 +27,51 @@ jobs:
       - name: Set matrix
         id: set-matrix
         run: |
-          # Get list of all apps.
-          APPS=$(find apps -maxdepth 2 -type d -name k8s | sed 's|apps/||g' | sed 's|/k8s||g')
-          # Create a JSON array of apps.
-          APPS_JSON=$(echo "$APPS" | jq -R -s -c 'split("\n") | map(select(length > 0))')
-
-          # Create the final matrix object.
+          # Get list of all apps
+          ALL_APPS=$(find apps -maxdepth 1 -mindepth 1 -type d -exec basename {} \; | sort)
+          
+          # Filter for apps that have k8s deployment strategy
+          APPS_TO_DEPLOY=""
+          for app in $ALL_APPS; do
+            PACKAGE_JSON_PATH="apps/$app/package.json"
+            
+            # Skip if package.json doesn't exist
+            if [ ! -f "$PACKAGE_JSON_PATH" ]; then
+              echo "No package.json found for $app, skipping"
+              continue
+            fi
+            
+            # Check if the app uses k8s deployment strategy
+            RELEASE_STRATEGY=$(node -p "require('./$PACKAGE_JSON_PATH').release?.strategy || 'none'")
+            
+            if [ "$RELEASE_STRATEGY" == "k8s" ]; then
+              # Get the k8s config directory path to verify it exists
+              CONFIG_DIR=$(node -p "require('./$PACKAGE_JSON_PATH').release?.k8s?.configDirPath || './k8s'")
+              # Remove leading ./ if present
+              CONFIG_DIR=$(echo "$CONFIG_DIR" | sed 's#^\./##')
+              
+              # Check if the k8s config directory exists
+              if [ -d "apps/$app/$CONFIG_DIR" ]; then
+                echo "Found k8s app: $app (config dir: $CONFIG_DIR)"
+                APPS_TO_DEPLOY="$APPS_TO_DEPLOY $app"
+              else
+                echo "App $app has k8s strategy but no config directory at apps/$app/$CONFIG_DIR"
+              fi
+            else
+              echo "App $app has release strategy: $RELEASE_STRATEGY, skipping"
+            fi
+          done
+          
+          # Create JSON array of apps
+          if [ -z "$APPS_TO_DEPLOY" ]; then
+            APPS_JSON="[]"
+          else
+            APPS_JSON=$(echo "$APPS_TO_DEPLOY" | tr ' ' '\n' | grep -v '^$' | jq -R -s -c 'split("\n") | map(select(length > 0))')
+          fi
+          
+          # Create the final matrix object
           MATRIX_JSON=$(echo "{\"app\": $APPS_JSON}")
-
+          
           echo "matrix=$MATRIX_JSON" >> $GITHUB_OUTPUT
           echo "Matrix: $MATRIX_JSON"
 

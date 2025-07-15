@@ -65,20 +65,11 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  # Publish apps where necessary.
-  publish-drifted-apps:
-    name: Publish drifted apps
-    needs: release
-    # Only run this job if there are apps to deploy.
-    if: ${{ needs.release.outputs.should_publish == 'true' }}
-    uses: ./.github/workflows/publish-drifted-apps.yaml
-    secrets: inherit # Necessary for accessing the KUBECONFIG etc.
-
-  # Publish packages where necessary.
-  publish-drifted-packages:
+  # Publish drifted packages (both apps and npm packages).
+  publish-drifted:
     name: Publish drifted packages
     needs: release
-    # Only run this job if there are apps to deploy.
+    # Only run this job if there are packages to publish.
     if: ${{ needs.release.outputs.should_publish == 'true' }}
-    uses: ./.github/workflows/publish-drifted-packages.yaml
-    secrets: inherit # Necessary for accessing the KUBECONFIG etc.
+    uses: ./.github/workflows/publish-drifted-apps-and-packages.yaml
+    secrets: inherit # Necessary for accessing KUBECONFIG, npm tokens, etc.

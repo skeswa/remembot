@@ -6,7 +6,8 @@
   "release": {
     "strategy": "k8s",
     "k8s": {
-      "configDirPath": "./k8s"
+      "configDirPath": "./k8s",
+      "kubeconfigSecretName": "RHUIDEAN_KUBECONFIG"
     },
     "deploy": {
       "timestamp": "2025-06-19T12:00:00.000Z",

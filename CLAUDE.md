@@ -136,8 +136,8 @@ CMD ["./index"]
 #### Deployment Workflows
 
 ##### Deploy App (`.github/workflows/deploy-app.yaml`)
-- Reads `release.strategy` and `release.k8s.configDirPath` from package.json
-- Reads target cluster from `k8s/target.yaml`
+- Reads `release.strategy`, `release.k8s.configDirPath`, and `release.k8s.kubeconfigSecretName` from package.json
+- Uses the specified GitHub secret to access the target Kubernetes cluster
 - Applies k8s manifests in order
 - Updates `release.deploy` field after successful deployment
 
@@ -178,7 +178,8 @@ Each package.json contains a `release` field that tracks deployment and publishi
 "release": {
   "strategy": "k8s",
   "k8s": {
-    "configDirPath": "./k8s"  // Where k8s manifests are stored (relative to package.json)
+    "configDirPath": "./k8s",             // Where k8s manifests are stored (relative to package.json)
+    "kubeconfigSecretName": "RHUIDEAN_KUBECONFIG"  // GitHub secret containing kubeconfig for target cluster
   },
   "deploy": {
     "timestamp": "2025-06-19T12:00:00.000Z",  // When last deployed to cluster
@@ -250,9 +251,9 @@ Each package.json contains a `release` field that tracks deployment and publishi
 - All apps use Alpine-based Docker images with multi-stage builds
 - Apps run as non-root user (`bunuser`)
 - Kubernetes configurations in `k8s/` directories:
-  - `target.yaml` - specifies deployment cluster
   - `deployment.yaml` - versioned container images
   - `namespace.yaml`, `service.yaml`, `ingress.yaml` - standard k8s resources
+  - Target cluster specified via `release.k8s.kubeconfigSecretName` in package.json
 - Container images tagged with versions from package.json
 - Multi-cluster support via per-app deployment targets
 - Atomic git operations with retry logic for concurrent pushes
@@ -282,9 +283,9 @@ Each package.json contains a `release` field that tracks deployment and publishi
 
 ### Multi-Cluster Support
 
-- Per-app deployment targets via `k8s/target.yaml`
-- Environment-specific KUBECONFIG secrets
-- Flexible cluster assignment
+- Per-app deployment targets via `release.k8s.kubeconfigSecretName` in package.json
+- Environment-specific KUBECONFIG secrets stored in GitHub
+- Flexible cluster assignment per application
 
 ### Atomic Git Operations
 

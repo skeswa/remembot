@@ -1,7 +1,0 @@
-apiVersion: sandile.dev/v1
-kind: DeploymentTarget
-spec:
-  kind: kubectl
-  kubeconfig:
-    secret:
-      name: RHUIDEAN_KUBECONFIG

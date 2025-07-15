@@ -85,12 +85,19 @@ jobs:
         with:
           version: "latest"
 
-      # Read the deployment target from the app's k8s configuration.
-      # This determines which environment (e.g., DEV, PROD) to deploy to.
+      # Read the kubeconfig secret name from package.json.
+      # This determines which cluster to deploy to.
       - name: Read kubeconfig secret name
         id: target
         run: |
-          SECRET_NAME=$(yq -r '.spec.kubeconfig.secret.name' ${{ steps.k8s-config.outputs.path }}/target.yaml)
+          PACKAGE_JSON_PATH="apps/${{ inputs.app_name }}/package.json"
+          SECRET_NAME=$(node -p "require('./$PACKAGE_JSON_PATH').release?.k8s?.kubeconfigSecretName || ''")
+          
+          if [ -z "$SECRET_NAME" ]; then
+            echo "::error::No kubeconfigSecretName found in package.json for ${{ inputs.app_name }}"
+            exit 1
+          fi
+          
           echo "secret_name=$SECRET_NAME" >> $GITHUB_OUTPUT
           echo "Using kubeconfig secret: $SECRET_NAME"
 
@@ -145,7 +152,7 @@ jobs:
           # Apply any remaining Kubernetes manifests that weren't in the ordered list.
           # This handles additional resources like ConfigMaps, Secrets, etc.
           echo "Applying remaining YAML files..."
-          for file in $(find "$APP_K8S_PATH" -type f -name "*.yaml" ! -name "target.yaml"); do
+          for file in $(find "$APP_K8S_PATH" -type f -name "*.yaml"); do
             # Check if the file is one of the ordered files (already applied or handled).
             IS_ORDERED_FILE=false
             for ORDERED_FILE_NAME in "${ORDERED_FILES[@]}"; do

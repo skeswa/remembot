@@ -74,6 +74,7 @@ interface PackageJson {
         strategy: "k8s";
         k8s: {
           configDirPath: string;
+          kubeconfigSecretName: string;
         };
         deploy?: {
           timestamp: string;

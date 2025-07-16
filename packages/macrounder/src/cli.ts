@@ -336,7 +336,7 @@ program
       // Check if running as compiled binary
       const isCompiled = process.argv[1] === undefined;
       let programArgs: string[];
-      
+
       if (isCompiled) {
         // Running as compiled binary
         programArgs = [process.execPath, "daemon"];
@@ -354,7 +354,7 @@ program
     <string>com.remembot.macrounder</string>
     <key>ProgramArguments</key>
     <array>
-${programArgs.map(arg => `        <string>${arg}</string>`).join('\n')}
+${programArgs.map((arg) => `        <string>${arg}</string>`).join("\n")}
     </array>
     <key>RunAtLoad</key>
     <true/>

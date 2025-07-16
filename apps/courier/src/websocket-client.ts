@@ -1,6 +1,22 @@
+import pino from "pino";
+import {
+  AppleScriptExecutor,
+  MessageDatabase,
+  MessageListener,
+  sendMessage,
+} from "@remembot/imessage";
+import type { Message } from "@remembot/imessage";
+import { getRandomSnarkyResponse } from "./snarky-responses";
+
 const API_AUTHORITY = process.env.API_AUTHORITY;
 
 const serverUrl = `ws://${API_AUTHORITY}/courier`;
+
+const logger = pino({
+  level: process.env.LOG_LEVEL || "info",
+});
+
+const processedMessages = new Set<string>();
 
 /**
  * Establishes a WebSocket connection and returns a Promise that resolves
@@ -12,12 +28,61 @@ function connectWebSocket(): Promise<void> {
 
     const socket = new WebSocket(serverUrl);
 
+    // Set up iMessage integration
+    const db = MessageDatabase.default();
+    db.open();
+    const executor = new AppleScriptExecutor();
+    const listener = new MessageListener(db, logger, 1000);
+
     socket.addEventListener("open", (event) => {
       console.log("WebSocket connection opened:", event);
       // Send a message after connection is established
       const messageToSend = "Hello from Courier!";
       console.log(`Sending message: ${messageToSend}`);
       socket.send(messageToSend);
+
+      // Start listening for iMessages
+      listener.on("message", async (msg: Message) => {
+        // Skip if we've already processed this message
+        if (processedMessages.has(msg.guid)) {
+          return;
+        }
+        processedMessages.add(msg.guid);
+
+        // Only respond to messages from others (not from me)
+        if (!msg.isFromMe && msg.text) {
+          console.log(
+            `[${msg.date.toISOString()}] Received message from ${
+              msg.handle.name ?? msg.handle.id
+            }: ${msg.text}`,
+          );
+
+          try {
+            const snarkyResponse = getRandomSnarkyResponse();
+            await sendMessage(executor, msg.handle, snarkyResponse);
+            console.log(`Sent snarky response: ${snarkyResponse}`);
+
+            // Notify the websocket server about the interaction
+            socket.send(
+              JSON.stringify({
+                type: "message_handled",
+                from: msg.handle.id,
+                originalMessage: msg.text,
+                response: snarkyResponse,
+              }),
+            );
+          } catch (error) {
+            console.error("Failed to send snarky response:", error);
+          }
+        }
+      });
+
+      listener.on("error", (err: unknown) => {
+        console.error("MessageListener error:", err);
+      });
+
+      listener.startListening();
+      console.log("Started listening for iMessages...");
     });
 
     socket.addEventListener("message", (event) => {
@@ -33,6 +98,10 @@ function connectWebSocket(): Promise<void> {
     });
 
     socket.addEventListener("close", (event) => {
+      // Clean up iMessage listener
+      listener.dispose();
+      db.close();
+
       if (event.wasClean) {
         console.log(
           `WebSocket connection closed cleanly, code=${event.code} reason=${event.reason}`,

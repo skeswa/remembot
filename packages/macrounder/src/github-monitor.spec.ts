@@ -19,7 +19,9 @@ function createMockResponse(init: {
     redirected: false,
     body: null,
     bodyUsed: false,
-    clone: function() { return createMockResponse(init); },
+    clone: function () {
+      return createMockResponse(init);
+    },
     json: init.json || (() => Promise.resolve({})),
     text: () => Promise.resolve(""),
     blob: () => Promise.resolve(new Blob()),
@@ -38,7 +40,7 @@ const mockFetch = mock((url: string): Promise<Response> => {
           ok: false,
           status: 404,
           statusText: "Not Found",
-        })
+        }),
       );
     }
 
@@ -48,25 +50,25 @@ const mockFetch = mock((url: string): Promise<Response> => {
         status: 200,
         json: () =>
           Promise.resolve({
-          id: 1,
-          tag_name: "v1.0.0",
-          name: "Release 1.0.0",
-          body: "Release notes",
-          prerelease: false,
-          draft: false,
-          published_at: "2024-01-01T00:00:00Z",
-          assets: [
-            {
-              id: 1,
-              name: "app-darwin-arm64",
-              size: 1024000,
-              browser_download_url:
-                "https://github.com/owner/repo/releases/download/v1.0.0/app-darwin-arm64",
-              content_type: "application/octet-stream",
-            },
-          ],
-        }),
-      })
+            id: 1,
+            tag_name: "v1.0.0",
+            name: "Release 1.0.0",
+            body: "Release notes",
+            prerelease: false,
+            draft: false,
+            published_at: "2024-01-01T00:00:00Z",
+            assets: [
+              {
+                id: 1,
+                name: "app-darwin-arm64",
+                size: 1024000,
+                browser_download_url:
+                  "https://github.com/owner/repo/releases/download/v1.0.0/app-darwin-arm64",
+                content_type: "application/octet-stream",
+              },
+            ],
+          }),
+      }),
     );
   }
 
@@ -77,28 +79,28 @@ const mockFetch = mock((url: string): Promise<Response> => {
         status: 200,
         json: () =>
           Promise.resolve([
-          {
-            id: 1,
-            tag_name: "v1.0.0",
-            name: "Release 1.0.0",
-            body: "Release notes",
-            prerelease: false,
-            draft: false,
-            published_at: "2024-01-01T00:00:00Z",
-            assets: [],
-          },
-          {
-            id: 2,
-            tag_name: "v0.9.0",
-            name: "Release 0.9.0",
-            body: "Previous release",
-            prerelease: false,
-            draft: false,
-            published_at: "2023-12-01T00:00:00Z",
-            assets: [],
-          },
-        ]),
-      })
+            {
+              id: 1,
+              tag_name: "v1.0.0",
+              name: "Release 1.0.0",
+              body: "Release notes",
+              prerelease: false,
+              draft: false,
+              published_at: "2024-01-01T00:00:00Z",
+              assets: [],
+            },
+            {
+              id: 2,
+              tag_name: "v0.9.0",
+              name: "Release 0.9.0",
+              body: "Previous release",
+              prerelease: false,
+              draft: false,
+              published_at: "2023-12-01T00:00:00Z",
+              assets: [],
+            },
+          ]),
+      }),
     );
   }
 
@@ -107,7 +109,7 @@ const mockFetch = mock((url: string): Promise<Response> => {
       ok: false,
       status: 500,
       statusText: "Internal Server Error",
-    })
+    }),
   );
 });
 
@@ -225,8 +227,8 @@ describe("GitHubMonitor", () => {
                 tag_name: `v${latest}`,
                 assets: [],
               }),
-          })
-        )
+          }),
+        ),
       );
 
       monitor = new GitHubMonitor("owner/repo", logger, current);
@@ -255,8 +257,8 @@ describe("GitHubMonitor", () => {
           ok: false,
           status: 500,
           statusText: "Internal Server Error",
-        })
-      )
+        }),
+      ),
     );
 
     monitor = new GitHubMonitor("owner/repo", logger);
@@ -295,8 +297,8 @@ describe("GitHubMonitor", () => {
                 tag_name: input,
                 assets: [],
               }),
-          })
-        )
+          }),
+        ),
       );
 
       monitor = new GitHubMonitor("owner/repo", logger);

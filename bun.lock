@@ -26,6 +26,10 @@
     "apps/courier": {
       "name": "courier",
       "version": "0.2.5",
+      "dependencies": {
+        "@remembot/imessage": "*",
+        "pino": "^9.6.0",
+      },
       "devDependencies": {
         "@eslint/js": "^9.26.0",
         "@repo/eslint-config": "*",

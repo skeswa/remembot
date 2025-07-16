@@ -7,7 +7,7 @@ function createMockResponse(init: {
   ok: boolean;
   status: number;
   statusText?: string;
-  json?: () => Promise<any>;
+  json?: () => Promise<unknown>;
 }): Response {
   const response = {
     ok: init.ok,

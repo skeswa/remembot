@@ -348,9 +348,7 @@ export class ServiceManager extends EventEmitter {
     return services.map((service) => this.getServiceStatus(service.name));
   }
 
-  private async getCurrentVersion(
-    _service: ServiceConfig,
-  ): Promise<string | undefined> {
+  private async getCurrentVersion(): Promise<string | undefined> {
     // This would need to be implemented based on how versions are tracked
     // Could read from a version file, parse binary output, etc.
     return undefined;

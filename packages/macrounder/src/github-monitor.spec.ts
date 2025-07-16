@@ -76,10 +76,10 @@ const mockFetch = mock((url: string) => {
   });
 });
 
-globalThis.fetch = mockFetch as any;
+globalThis.fetch = mockFetch as unknown as typeof fetch;
 
 describe("GitHubMonitor", () => {
-  let logger: any;
+  let logger: pino.Logger;
   let monitor: GitHubMonitor;
 
   beforeEach(() => {
@@ -190,7 +190,7 @@ describe("GitHubMonitor", () => {
                 tag_name: `v${latest}`,
                 assets: [],
               }),
-          }) as any,
+          }) as unknown as Response,
       );
 
       monitor = new GitHubMonitor("owner/repo", logger, current);
@@ -257,7 +257,7 @@ describe("GitHubMonitor", () => {
                 tag_name: input,
                 assets: [],
               }),
-          }) as any,
+          }) as unknown as Response,
       );
 
       monitor = new GitHubMonitor("owner/repo", logger);

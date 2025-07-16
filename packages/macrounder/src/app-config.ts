@@ -19,7 +19,7 @@ export const RunConfigSchema = z.object({
 export const AppConfigSchema = z.object({
   app: z.object({
     name: z.string().min(1),
-    repository: z.string().regex(/^[^\/]+\/[^\/]+$/),
+    repository: z.string().regex(/^[^/]+\/[^/]+$/),
     check_interval: z.number().min(60).default(300),
     auto_start: z.boolean().default(true),
     auto_restart: z.boolean().default(true),

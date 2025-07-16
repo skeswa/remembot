@@ -10,7 +10,18 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import pino from "pino";
-import type { GitHubRelease, ServiceConfig } from "./types";
+import type { GitHubRelease, ServiceConfig, GitHubAsset } from "./types";
+
+// Type helpers for accessing private methods
+type UpdateManagerWithPrivates = UpdateManager & {
+  findMacOSAsset: (
+    assets: GitHubAsset[],
+    serviceName: string,
+  ) => GitHubAsset | undefined;
+  downloadAsset: (asset: GitHubAsset, serviceName: string) => Promise<string>;
+  backupCurrentBinary: (binaryPath: string) => Promise<string | null>;
+  installBinary: (sourcePath: string, targetPath: string) => Promise<void>;
+};
 
 // Mock fetch for download tests
 const mockFetch = mock((url: string) => {
@@ -36,11 +47,11 @@ const mockFetch = mock((url: string) => {
   });
 });
 
-globalThis.fetch = mockFetch as any;
+globalThis.fetch = mockFetch as unknown as typeof fetch;
 
 describe("UpdateManager", () => {
   let updateManager: UpdateManager;
-  let logger: any;
+  let logger: pino.Logger;
   let testDir: string;
   let downloadDir: string;
 
@@ -89,7 +100,10 @@ describe("UpdateManager", () => {
       },
     ];
 
-    const asset = (updateManager as any).findMacOSAsset(assets, "app");
+    const asset = (updateManager as UpdateManagerWithPrivates).findMacOSAsset(
+      assets,
+      "app",
+    );
 
     expect(asset).toBeDefined();
     expect(asset?.name).toBe("app-darwin-arm64");
@@ -120,7 +134,10 @@ describe("UpdateManager", () => {
       },
     ];
 
-    const asset = (updateManager as any).findMacOSAsset(assets, "app");
+    const asset = (updateManager as UpdateManagerWithPrivates).findMacOSAsset(
+      assets,
+      "app",
+    );
 
     expect(asset?.name).toBe("app-darwin-x64");
   });
@@ -134,10 +151,9 @@ describe("UpdateManager", () => {
       contentType: "application/octet-stream",
     };
 
-    const downloadPath = await (updateManager as any).downloadAsset(
-      asset,
-      "test",
-    );
+    const downloadPath = await (
+      updateManager as UpdateManagerWithPrivates
+    ).downloadAsset(asset, "test");
 
     expect(existsSync(downloadPath)).toBe(true);
     expect(downloadPath).toContain("test-");
@@ -157,7 +173,7 @@ describe("UpdateManager", () => {
     };
 
     await expect(
-      (updateManager as any).downloadAsset(asset, "test"),
+      (updateManager as UpdateManagerWithPrivates).downloadAsset(asset, "test"),
     ).rejects.toThrow("Downloaded file size mismatch");
   });
 
@@ -165,9 +181,9 @@ describe("UpdateManager", () => {
     const binaryPath = join(testDir, "current-binary");
     writeFileSync(binaryPath, "current version");
 
-    const backupPath = await (updateManager as any).backupCurrentBinary(
-      binaryPath,
-    );
+    const backupPath = await (
+      updateManager as UpdateManagerWithPrivates
+    ).backupCurrentBinary(binaryPath);
 
     expect(backupPath).not.toBeNull();
     expect(existsSync(backupPath!)).toBe(true);
@@ -178,9 +194,9 @@ describe("UpdateManager", () => {
   test("should handle missing binary backup", async () => {
     const binaryPath = join(testDir, "non-existent");
 
-    const backupPath = await (updateManager as any).backupCurrentBinary(
-      binaryPath,
-    );
+    const backupPath = await (
+      updateManager as UpdateManagerWithPrivates
+    ).backupCurrentBinary(binaryPath);
 
     expect(backupPath).toBeNull();
   });
@@ -191,7 +207,10 @@ describe("UpdateManager", () => {
 
     writeFileSync(sourcePath, "new version");
 
-    await (updateManager as any).installBinary(sourcePath, targetPath);
+    await (updateManager as UpdateManagerWithPrivates).installBinary(
+      sourcePath,
+      targetPath,
+    );
 
     expect(existsSync(targetPath)).toBe(true);
     expect(readFileSync(targetPath, "utf-8")).toBe("new version");
@@ -327,7 +346,10 @@ describe("UpdateManager", () => {
 
     writeFileSync(sourcePath, "#!/bin/bash\necho hello");
 
-    await (updateManager as any).installBinary(sourcePath, targetPath);
+    await (updateManager as UpdateManagerWithPrivates).installBinary(
+      sourcePath,
+      targetPath,
+    );
 
     expect(existsSync(targetPath)).toBe(true);
 
@@ -385,7 +407,10 @@ describe("UpdateManager", () => {
       },
     ];
 
-    const asset = (updateManager as any).findMacOSAsset(assets, "app");
+    const asset = (updateManager as UpdateManagerWithPrivates).findMacOSAsset(
+      assets,
+      "app",
+    );
 
     // Should pick darwin-arm64 as highest priority
     expect(asset?.name).toBe("app-darwin-arm64");

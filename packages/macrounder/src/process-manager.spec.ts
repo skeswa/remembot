@@ -4,10 +4,11 @@ import { writeFileSync, rmSync, chmodSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import pino from "pino";
+import type { ChildProcess } from "node:child_process";
 
 describe("ProcessManager", () => {
   let processManager: ProcessManager;
-  let logger: any;
+  let logger: pino.Logger;
   let testBinaryPath: string;
 
   beforeEach(() => {
@@ -40,7 +41,7 @@ sleep 100
       autoStart: true,
     };
 
-    let startedEvent: any;
+    let startedEvent: { service: string; pid: number } | undefined;
     processManager.on("started", (event) => {
       startedEvent = event;
     });
@@ -49,8 +50,8 @@ sleep 100
 
     expect(processManager.isRunning("test-service")).toBe(true);
     expect(startedEvent).toBeDefined();
-    expect(startedEvent.service).toBe("test-service");
-    expect(startedEvent.pid).toBeGreaterThan(0);
+    expect(startedEvent?.service).toBe("test-service");
+    expect(startedEvent?.pid).toBeGreaterThan(0);
   });
 
   test("should throw error when starting already running service", async () => {
@@ -95,7 +96,7 @@ sleep 100
     await processManager.start(config);
     expect(processManager.isRunning("stop-test")).toBe(true);
 
-    let stoppedEvent: any;
+    let stoppedEvent: { service: string; code?: number } | undefined;
     processManager.on("stopped", (event) => {
       stoppedEvent = event;
     });
@@ -104,7 +105,7 @@ sleep 100
 
     expect(processManager.isRunning("stop-test")).toBe(false);
     expect(stoppedEvent).toBeDefined();
-    expect(stoppedEvent.service).toBe("stop-test");
+    expect(stoppedEvent?.service).toBe("stop-test");
   });
 
   test("should throw error when stopping non-running service", async () => {
@@ -212,7 +213,11 @@ sleep 1
 
     let output = "";
     processManager.on("started", () => {
-      const processInfo = (processManager as any).processes.get("env-test");
+      const processInfo = (
+        processManager as ProcessManager & {
+          processes: Map<string, { process: ChildProcess }>;
+        }
+      ).processes.get("env-test");
       processInfo.process.stdout?.on("data", (data: Buffer) => {
         output += data.toString();
       });
@@ -251,7 +256,11 @@ sleep 1
 
     let output = "";
     processManager.on("started", () => {
-      const processInfo = (processManager as any).processes.get("arg-test");
+      const processInfo = (
+        processManager as ProcessManager & {
+          processes: Map<string, { process: ChildProcess }>;
+        }
+      ).processes.get("arg-test");
       processInfo.process.stdout?.on("data", (data: Buffer) => {
         output += data.toString();
       });
@@ -388,7 +397,11 @@ exit 1
     await processManager.start(config);
 
     // Kill the process to trigger exit
-    const processInfo = (processManager as any).processes.get("no-auto-start");
+    const processInfo = (
+      processManager as ProcessManager & {
+        processes: Map<string, { process: ChildProcess }>;
+      }
+    ).processes.get("no-auto-start");
     processInfo.process.kill();
 
     // Wait to ensure no auto-restart happens
@@ -427,7 +440,11 @@ sleep 1
 
     let output = "";
     processManager.on("started", () => {
-      const processInfo = (processManager as any).processes.get("cwd-test");
+      const processInfo = (
+        processManager as ProcessManager & {
+          processes: Map<string, { process: ChildProcess }>;
+        }
+      ).processes.get("cwd-test");
       processInfo.process.stdout?.on("data", (data: Buffer) => {
         output += data.toString();
       });
@@ -471,7 +488,11 @@ sleep 1
     let stdout = "";
     let stderr = "";
     processManager.on("started", () => {
-      const processInfo = (processManager as any).processes.get("output-test");
+      const processInfo = (
+        processManager as ProcessManager & {
+          processes: Map<string, { process: ChildProcess }>;
+        }
+      ).processes.get("output-test");
       processInfo.process.stdout?.on("data", (data: Buffer) => {
         stdout += data.toString();
       });
@@ -538,7 +559,7 @@ sleep 1
       await processManager.start(config);
       // If it starts, immediately stop it
       await processManager.stop("spawn-error-test");
-    } catch (error) {
+    } catch {
       // Expected to throw
     }
 

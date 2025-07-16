@@ -136,7 +136,13 @@ export class UpdateManager {
     }
 
     const writeStream = createWriteStream(downloadPath);
-    await pipeline(response.body as any, writeStream);
+    if (!response.body) {
+      throw new Error("Response body is empty");
+    }
+    await pipeline(
+      response.body as unknown as NodeJS.ReadableStream,
+      writeStream,
+    );
 
     // Verify download size
     const stats = statSync(downloadPath);

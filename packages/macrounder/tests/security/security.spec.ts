@@ -4,7 +4,6 @@ import {
   mkdirSync,
   rmSync,
   writeFileSync,
-  readFileSync,
   statSync,
 } from "node:fs";
 import { join } from "node:path";
@@ -16,7 +15,7 @@ import pino from "pino";
 
 describe("Security Tests", () => {
   let testDir: string;
-  let logger: any;
+  let logger: pino.Logger;
 
   beforeEach(() => {
     testDir = join(tmpdir(), `security-test-${Date.now()}`);
@@ -37,12 +36,6 @@ describe("Security Tests", () => {
 
       // saveApp doesn't validate, but loadApp does
       // Save invalid config and try to load it
-      const invalidConfig1 = {
-        app: {
-          name: "test-invalid",
-          repository: "invalid-format", // Invalid: not owner/repo format
-        },
-      };
 
       // Save raw invalid TOML
       const tomlPath = join(testDir, "apps", "test-invalid.toml");
@@ -184,7 +177,14 @@ args = []
       writeFileSync(sourcePath, "#!/bin/bash\necho test");
 
       // Use the private method through any type
-      await (updateManager as any).installBinary(sourcePath, targetPath);
+      await (
+        updateManager as UpdateManager & {
+          installBinary: (
+            sourcePath: string,
+            targetPath: string,
+          ) => Promise<void>;
+        }
+      ).installBinary(sourcePath, targetPath);
 
       expect(existsSync(targetPath)).toBe(true);
 
@@ -204,13 +204,6 @@ args = []
       expect(logger.level).toBe("silent"); // In tests
 
       // In production, verify that sensitive data patterns are not logged
-      const sensitivePatterns = [
-        /password/i,
-        /secret/i,
-        /token/i,
-        /key/i,
-        /credential/i,
-      ];
 
       // This is a placeholder - in a real test, we'd intercept log calls
       expect(true).toBe(true);
@@ -220,7 +213,7 @@ args = []
   // SEC-NF-006: Test HTTPS usage for GitHub API requests
   describe("SEC-NF-006: HTTPS enforcement", () => {
     test("should use HTTPS for GitHub API requests", () => {
-      const monitor = new GitHubMonitor("owner/repo", logger);
+      new GitHubMonitor("owner/repo", logger);
 
       // Check that the API URLs use HTTPS
       // This is verified in the GitHubMonitor implementation

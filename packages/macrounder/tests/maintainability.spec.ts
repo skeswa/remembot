@@ -1,7 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { execSync } from "node:child_process";
 
 describe("Maintainability Tests", () => {
   const projectRoot = join(import.meta.dir, "..");

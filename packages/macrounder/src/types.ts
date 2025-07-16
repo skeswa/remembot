@@ -2,7 +2,7 @@ import { z } from "zod";
 
 export const ServiceConfigSchema = z.object({
   name: z.string().min(1),
-  repository: z.string().regex(/^[^\/]+\/[^\/]+$/),
+  repository: z.string().regex(/^[^/]+\/[^/]+$/),
   binaryPath: z.string(),
   checkInterval: z.number().min(60).default(300),
   autoStart: z.boolean().default(true),

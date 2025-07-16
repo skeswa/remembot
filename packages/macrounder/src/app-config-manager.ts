@@ -65,7 +65,7 @@ export class AppConfigManager {
     const configPath = this.getAppConfigPath(config.app.name);
 
     try {
-      const tomlContent = TOML.stringify(config as any);
+      const tomlContent = TOML.stringify(config as TOML.JsonMap);
       writeFileSync(configPath, tomlContent, "utf-8");
     } catch (error) {
       if (error instanceof Error) {
@@ -150,7 +150,7 @@ export class AppConfigManager {
 
   saveGlobalConfig(config: GlobalConfig): void {
     try {
-      const tomlContent = TOML.stringify(config as any);
+      const tomlContent = TOML.stringify(config as TOML.JsonMap);
       writeFileSync(this.globalConfigPath, tomlContent, "utf-8");
       this.globalConfig = config;
     } catch (error) {

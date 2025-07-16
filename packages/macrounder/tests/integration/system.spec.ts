@@ -7,8 +7,7 @@ import {
   readFileSync,
 } from "node:fs";
 import { join } from "node:path";
-import { tmpdir, homedir } from "node:os";
-import { spawn } from "node:child_process";
+import { tmpdir } from "node:os";
 import { ServiceManager } from "../../src/service-manager";
 import { AppConfigManager } from "../../src/app-config-manager";
 
@@ -33,12 +32,6 @@ describe("System Integration Tests", () => {
   // SYS-F-001: Test macOS launchd integration for automatic startup
   describe("SYS-F-001: launchd integration", () => {
     test("should generate valid launchd plist", () => {
-      const plistPath = join(
-        testDir,
-        "Library",
-        "LaunchAgents",
-        "com.remembot.macrounder.plist",
-      );
       const expectedContent = `<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -75,8 +68,6 @@ describe("System Integration Tests", () => {
   describe("SYS-F-002: plist path generation", () => {
     test("should use correct paths in launchd plist", () => {
       const bunPath = process.argv[0];
-      const scriptPath = join(import.meta.dir, "../../src/cli.ts");
-
       // Verify paths exist
       expect(existsSync(bunPath)).toBe(true);
       expect(bunPath).toContain("bun");
@@ -156,7 +147,7 @@ describe("System Integration Tests", () => {
   describe("SYS-F-006: directory structure", () => {
     test("should create .macrounder directory structure", () => {
       const baseDir = join(testDir, ".macrounder");
-      const configManager = new AppConfigManager(baseDir);
+      new AppConfigManager(baseDir);
 
       // Verify directories were created
       expect(existsSync(baseDir)).toBe(true);
@@ -190,7 +181,7 @@ describe("System Integration Tests", () => {
 
       // ServiceManager will create log directory when constructed with proper options
       const logDir = join(baseDir, "logs");
-      const manager = new ServiceManager({
+      new ServiceManager({
         baseDir: baseDir,
         logDir: logDir,
         useTomlConfig: true,

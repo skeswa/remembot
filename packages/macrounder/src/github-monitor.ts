@@ -1,6 +1,26 @@
 import type { GitHubRelease, UpdateInfo } from "./types";
 import type { Logger } from "pino";
 
+// GitHub API response types
+interface GitHubReleaseResponse {
+  id: number;
+  tag_name: string;
+  name?: string;
+  body?: string;
+  prerelease?: boolean;
+  draft?: boolean;
+  published_at: string;
+  assets?: GitHubAssetResponse[];
+}
+
+interface GitHubAssetResponse {
+  id: number;
+  name: string;
+  size: number;
+  browser_download_url: string;
+  content_type: string;
+}
+
 export class GitHubMonitor {
   private readonly owner: string;
   private readonly repo: string;
@@ -71,7 +91,7 @@ export class GitHubMonitor {
 
       const data = await response.json();
 
-      return this.mapReleaseData(data);
+      return this.mapReleaseData(data as GitHubReleaseResponse);
     } catch (error) {
       if (error instanceof Error) {
         this.logger.error({ error: error.message }, "Failed to fetch release");
@@ -97,7 +117,7 @@ export class GitHubMonitor {
         );
       }
 
-      const data = (await response.json()) as any[];
+      const data = (await response.json()) as GitHubReleaseResponse[];
 
       return data.map((release) => this.mapReleaseData(release));
     } catch (error) {
@@ -108,7 +128,7 @@ export class GitHubMonitor {
     }
   }
 
-  private mapReleaseData(data: any): GitHubRelease {
+  private mapReleaseData(data: GitHubReleaseResponse): GitHubRelease {
     return {
       id: data.id,
       tagName: data.tag_name,
@@ -117,7 +137,7 @@ export class GitHubMonitor {
       prerelease: data.prerelease || false,
       draft: data.draft || false,
       publishedAt: data.published_at,
-      assets: (data.assets || []).map((asset: any) => ({
+      assets: (data.assets || []).map((asset) => ({
         id: asset.id,
         name: asset.name,
         size: asset.size,

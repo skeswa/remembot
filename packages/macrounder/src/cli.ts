@@ -72,7 +72,7 @@ program
       // Stop the service if running
       try {
         await manager.stopService(name);
-      } catch (error) {
+      } catch {
         // Service might not be running
       }
 

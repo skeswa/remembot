@@ -14,6 +14,7 @@ import type { GitHubRelease, ServiceConfig, GitHubAsset } from "./types";
 
 // Type helpers for accessing private methods
 // @ts-expect-error - type is not used due to ts-expect-error comments
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 type UpdateManagerWithPrivates = UpdateManager & {
   findMacOSAsset: (
     assets: GitHubAsset[],

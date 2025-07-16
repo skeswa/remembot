@@ -3,7 +3,7 @@ import { GitHubMonitor } from "./github-monitor";
 import pino from "pino";
 
 // Mock fetch globally
-const mockFetch = mock((url: string): Promise<any> => {
+const mockFetch = mock((url: string): Promise<Response> => {
   if (url.includes("/releases/latest")) {
     if (url.includes("not-found")) {
       return Promise.resolve({

@@ -1,20 +1,50 @@
 #!/usr/bin/env bun
 
 import { Command } from "commander";
-import { ServiceManager } from "./service-manager";
-import { AppConfigManager } from "./app-config-manager";
-import { createDefaultAppConfig } from "./app-config";
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { homedir } from "node:os";
 import { spawn } from "node:child_process";
+import { getMacrounderHome, getAppsDir, getLogsDir } from "./config/paths";
+import { Daemon } from "./daemon/daemon";
+import { IPCClient } from "./client/ipc-client";
+import { createDefaultAppConfig } from "./app-config";
+import { IPCErrorCode, IPCEvent, type LogLineEventPayload } from "./ipc/types";
 
 const program = new Command();
+
+// Helper function to safely extract error information
+function getErrorMessage(error: unknown): string {
+  if (error instanceof Error) {
+    return error.message;
+  }
+  if (typeof error === "string") {
+    return error;
+  }
+  return String(error);
+}
+
+function getErrorCode(error: unknown): string | number | undefined {
+  if (error && typeof error === "object" && "code" in error) {
+    return (error as { code: unknown }).code as string | number;
+  }
+  return undefined;
+}
 
 program
   .name("macrounder")
   .description("Background service manager for macOS with automatic updates")
   .version("0.1.0");
+
+// Helper function to get or create IPC client
+let _client: IPCClient | null = null;
+async function getClient(): Promise<IPCClient> {
+  if (!_client) {
+    _client = new IPCClient();
+    await _client.connect();
+  }
+  return _client;
+}
 
 // Add a new app
 program
@@ -27,13 +57,6 @@ program
   .option("--no-auto-restart", "Don't restart the app on failure")
   .action(async (name, opts) => {
     try {
-      const configManager = new AppConfigManager();
-
-      if (configManager.appExists(name)) {
-        console.error(`App ${name} already exists`);
-        process.exit(1);
-      }
-
       const appConfig = createDefaultAppConfig(name, opts.repo);
 
       // Override with provided options
@@ -46,11 +69,19 @@ program
       appConfig.app.auto_start = opts.autoStart;
       appConfig.app.auto_restart = opts.autoRestart;
 
-      configManager.saveApp(appConfig);
+      const client = await getClient();
+      await client.addService(name, opts.repo, appConfig);
+
       console.log(`App ${name} added successfully`);
-      console.log(`Configuration saved to: ~/.macrounder/apps/${name}.toml`);
+      console.log(
+        `Configuration saved to: ${resolve(getAppsDir(), `${name}.toml`)}`,
+      );
     } catch (error) {
-      console.error("Error:", error);
+      if (getErrorCode(error) === IPCErrorCode.ServiceAlreadyExists) {
+        console.error(`App ${name} already exists`);
+      } else {
+        console.error("Error:", getErrorMessage(error));
+      }
       process.exit(1);
     }
   });
@@ -61,25 +92,15 @@ program
   .description("Remove an app configuration")
   .action(async (name) => {
     try {
-      const configManager = new AppConfigManager();
-      const manager = new ServiceManager();
-
-      if (!configManager.appExists(name)) {
-        console.error(`App ${name} not found`);
-        process.exit(1);
-      }
-
-      // Stop the service if running
-      try {
-        await manager.stopService(name);
-      } catch {
-        // Service might not be running
-      }
-
-      configManager.deleteApp(name);
+      const client = await getClient();
+      await client.removeService(name);
       console.log(`App ${name} removed successfully`);
     } catch (error) {
-      console.error("Error:", error);
+      if (getErrorCode(error) === IPCErrorCode.ServiceNotFound) {
+        console.error(`App ${name} not found`);
+      } else {
+        console.error("Error:", getErrorMessage(error));
+      }
       process.exit(1);
     }
   });
@@ -91,8 +112,8 @@ program
   .option("--json", "Output as JSON")
   .action(async (opts) => {
     try {
-      const configManager = new AppConfigManager();
-      const apps = configManager.listApps();
+      const client = await getClient();
+      const apps = await client.listServices();
 
       if (opts.json) {
         console.log(JSON.stringify(apps, null, 2));
@@ -105,30 +126,22 @@ program
         }
       }
     } catch (error) {
-      console.error("Error:", error);
+      console.error("Error:", getErrorMessage(error));
       process.exit(1);
     }
   });
 
-// Edit an app configuration
+// Edit an app configuration (runs locally)
 program
   .command("edit <name>")
   .description("Open app configuration in editor")
   .action(async (name) => {
     try {
-      const configManager = new AppConfigManager();
+      // Check if app exists via daemon
+      const client = await getClient();
+      await client.getService(name); // This will throw if not found
 
-      if (!configManager.appExists(name)) {
-        console.error(`App ${name} not found`);
-        process.exit(1);
-      }
-
-      const configPath = resolve(
-        homedir(),
-        ".macrounder",
-        "apps",
-        `${name}.toml`,
-      );
+      const configPath = resolve(getAppsDir(), `${name}.toml`);
       const editor = process.env.EDITOR || "vi";
 
       const child = spawn(editor, [configPath], {
@@ -137,14 +150,20 @@ program
 
       child.on("exit", (code) => {
         if (code === 0) {
-          console.log("Configuration updated");
+          console.log(
+            "Configuration updated - daemon will reload automatically",
+          );
         } else {
           console.error("Editor exited with error");
           process.exit(1);
         }
       });
     } catch (error) {
-      console.error("Error:", error);
+      if (getErrorCode(error) === IPCErrorCode.ServiceNotFound) {
+        console.error(`App ${name} not found`);
+      } else {
+        console.error("Error:", getErrorMessage(error));
+      }
       process.exit(1);
     }
   });
@@ -155,25 +174,32 @@ program
   .description("Start managing service(s)")
   .action(async (name) => {
     try {
-      const manager = new ServiceManager();
+      const client = await getClient();
 
       if (name) {
         // Start specific service
-        const configManager = new AppConfigManager();
-        if (!configManager.appExists(name)) {
-          console.error(`App ${name} not found`);
-          process.exit(1);
-        }
-
-        await manager.startServiceProcess(name);
+        await client.startService(name);
         console.log(`Service ${name} started`);
       } else {
         // Start all services
-        await manager.start();
-        console.log("All services started");
+        const services = await client.listServices();
+        for (const service of services) {
+          try {
+            await client.startService(service);
+            console.log(`Service ${service} started`);
+          } catch (error) {
+            console.error(
+              `Failed to start ${service}: ${getErrorMessage(error)}`,
+            );
+          }
+        }
       }
     } catch (error) {
-      console.error("Error:", error);
+      if (getErrorCode(error) === IPCErrorCode.ServiceNotFound) {
+        console.error(`App ${name} not found`);
+      } else {
+        console.error("Error:", getErrorMessage(error));
+      }
       process.exit(1);
     }
   });
@@ -183,17 +209,27 @@ program
   .description("Stop a managed service")
   .action(async (name) => {
     try {
-      const manager = new ServiceManager();
+      const client = await getClient();
 
       if (name) {
-        await manager.stopService(name);
+        await client.stopService(name);
         console.log(`Service ${name} stopped`);
       } else {
-        await manager.shutdown();
-        console.log("All services stopped");
+        // Stop all services
+        const services = await client.listServices();
+        for (const service of services) {
+          try {
+            await client.stopService(service);
+            console.log(`Service ${service} stopped`);
+          } catch (error) {
+            console.error(
+              `Failed to stop ${service}: ${getErrorMessage(error)}`,
+            );
+          }
+        }
       }
     } catch (error) {
-      console.error("Error:", error);
+      console.error("Error:", getErrorMessage(error));
       process.exit(1);
     }
   });
@@ -203,11 +239,11 @@ program
   .description("Restart a managed service")
   .action(async (name) => {
     try {
-      const manager = new ServiceManager();
-      await manager.restartService(name);
+      const client = await getClient();
+      await client.restartService(name);
       console.log(`Service ${name} restarted`);
     } catch (error) {
-      console.error("Error:", error);
+      console.error("Error:", getErrorMessage(error));
       process.exit(1);
     }
   });
@@ -217,11 +253,21 @@ program
   .description("Check and apply updates for a service")
   .action(async (name) => {
     try {
-      const manager = new ServiceManager();
-      await manager.updateService(name);
-      console.log(`Service ${name} updated`);
+      const client = await getClient();
+      const updateInfo = await client.checkUpdate(name);
+
+      if (updateInfo.available) {
+        console.log(
+          `Update available: ${updateInfo.currentVersion} -> ${updateInfo.latestVersion}`,
+        );
+        console.log("Applying update...");
+        await client.applyUpdate(name);
+        console.log(`Service ${name} updated successfully`);
+      } else {
+        console.log(`Service ${name} is up to date`);
+      }
     } catch (error) {
-      console.error("Error:", error);
+      console.error("Error:", getErrorMessage(error));
       process.exit(1);
     }
   });
@@ -232,8 +278,8 @@ program
   .option("--json", "Output as JSON")
   .action(async (opts) => {
     try {
-      const manager = new ServiceManager();
-      const statuses = manager.getAllStatuses();
+      const client = await getClient();
+      const statuses = await client.getAllStatuses();
 
       if (opts.json) {
         console.log(JSON.stringify(statuses, null, 2));
@@ -263,7 +309,7 @@ program
         }
       }
     } catch (error) {
-      console.error("Error:", error);
+      console.error("Error:", getErrorMessage(error));
       process.exit(1);
     }
   });
@@ -275,27 +321,57 @@ program
   .option("--follow", "Follow log output")
   .action(async (name, opts) => {
     try {
-      const logDir = resolve(homedir(), ".macrounder", "logs");
-      const logFile = resolve(logDir, `${name}.log`);
+      const client = await getClient();
 
-      if (!existsSync(logFile)) {
-        console.error(`No logs found for service ${name}`);
-        process.exit(1);
-      }
-
-      // Simple log viewing - in production would use a proper tailing library
       if (opts.follow) {
         console.log("Following logs (Ctrl+C to stop)...");
-        // This would need a proper implementation with file watching
-        console.log("Follow mode not yet implemented");
+
+        // Subscribe to log events
+        await client.subscribe([IPCEvent.LogLine], [name]);
+
+        // Start streaming logs
+        await client.streamLogs(name, parseInt(opts.tail));
+
+        // Handle log line events
+        client.on(IPCEvent.LogLine, (payload: LogLineEventPayload) => {
+          if (payload.service === name) {
+            console.log(payload.line);
+          }
+        });
+
+        // Handle Ctrl+C to stop streaming
+        process.on("SIGINT", async () => {
+          await client.stopLogStream(name);
+          await client.disconnect();
+          process.exit(0);
+        });
+
+        // Keep the process running
+        await new Promise(() => {}); // Never resolves, keeps process alive
       } else {
-        const logs = readFileSync(logFile, "utf-8");
-        const lines = logs.split("\n");
-        const tail = lines.slice(-parseInt(opts.tail));
-        console.log(tail.join("\n"));
+        const result = await client.getLogs(name, parseInt(opts.tail), false);
+        console.log(result.logs.join("\n"));
       }
     } catch (error) {
-      console.error("Error:", error);
+      if (getErrorCode(error) === IPCErrorCode.ServiceNotFound) {
+        console.error(`Service ${name} not found`);
+      } else {
+        console.error("Error:", getErrorMessage(error));
+      }
+      process.exit(1);
+    }
+  });
+
+program
+  .command("shutdown")
+  .description("Shutdown the macrounder daemon")
+  .action(async () => {
+    try {
+      const client = await getClient();
+      await client.shutdown();
+      console.log("Daemon shutdown initiated");
+    } catch (error) {
+      console.error("Error:", getErrorMessage(error));
       process.exit(1);
     }
   });
@@ -303,12 +379,27 @@ program
 program
   .command("daemon")
   .description("Run macrounder as a daemon")
+  .option("--no-fork", "Run in foreground (don't fork)", false)
   .action(async () => {
     try {
-      console.log("Starting macrounder daemon...");
-      const manager = new ServiceManager();
+      // Check if daemon is already running
+      const client = new IPCClient();
+      if (client.isDaemonRunning()) {
+        try {
+          await client.connect();
+          await client.ping();
+          console.error("Daemon is already running");
+          process.exit(1);
+        } catch {
+          // Socket exists but daemon not responding, continue
+        }
+      }
 
-      await manager.start();
+      // Run daemon
+      console.log("Starting macrounder daemon...");
+      const daemon = new Daemon();
+
+      await daemon.start();
 
       console.log("Macrounder daemon started");
       console.log("Press Ctrl+C to stop");
@@ -361,20 +452,26 @@ ${programArgs.map((arg) => `        <string>${arg}</string>`).join("\n")}
     <key>KeepAlive</key>
     <true/>
     <key>StandardOutPath</key>
-    <string>${homedir()}/.macrounder/logs/daemon.stdout.log</string>
+    <string>${getLogsDir()}/daemon.stdout.log</string>
     <key>StandardErrorPath</key>
-    <string>${homedir()}/.macrounder/logs/daemon.stderr.log</string>
+    <string>${getLogsDir()}/daemon.stderr.log</string>
     <key>WorkingDirectory</key>
     <string>${homedir()}</string>
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+    </dict>
 </dict>
 </plist>`;
 
       writeFileSync(plistPath, plist);
       console.log(`LaunchAgent plist created at: ${plistPath}`);
-      console.log("To load the daemon, run:");
+      console.log("\nTo install and start the daemon:");
       console.log(`launchctl load ${plistPath}`);
+      console.log("\nThe daemon will start automatically on login.");
     } catch (error) {
-      console.error("Error:", error);
+      console.error("Error:", getErrorMessage(error));
       process.exit(1);
     }
   });
@@ -391,28 +488,44 @@ program
         "com.remembot.macrounder.plist",
       );
 
-      console.log("To unload the daemon, run:");
-      console.log(`launchctl unload ${plistPath}`);
-      console.log(`rm ${plistPath}`);
+      console.log("To uninstall the daemon:");
+      console.log(`\n1. Stop the daemon:`);
+      console.log(`   launchctl unload ${plistPath}`);
+      console.log(`\n2. Remove the plist file:`);
+      console.log(`   rm ${plistPath}`);
+      console.log(`\n3. (Optional) Remove configuration and logs:`);
+      console.log(`   rm -rf ${getMacrounderHome()}`);
     } catch (error) {
-      console.error("Error:", error);
+      console.error("Error:", getErrorMessage(error));
       process.exit(1);
     }
   });
 
-// Migration command
-program
-  .command("migrate")
-  .description("Migrate from old JSON configuration to TOML")
-  .action(async () => {
+// Check if running daemon command
+const isDaemonMode = process.argv.includes("daemon");
+
+if (isDaemonMode) {
+  // Run daemon directly
+  program.parseAsync(process.argv);
+} else {
+  // Run as client - check daemon and execute commands
+  (async () => {
     try {
-      const configManager = new AppConfigManager();
-      await configManager.migrateFromJson();
-      console.log("Migration completed successfully");
+      await program.parseAsync(process.argv);
     } catch (error) {
-      console.error("Error:", error);
-      process.exit(1);
+      const errorMessage = getErrorMessage(error);
+      const errorCode = getErrorCode(error);
+      if (errorCode === "ENOENT" || errorMessage === "Daemon is not running") {
+        console.error("\nError: Macrounder daemon is not running.");
+        console.error("Start the daemon with: macrounder daemon");
+        console.error(
+          "Or install as a service with: macrounder install-daemon\n",
+        );
+        process.exit(1);
+      } else {
+        console.error("Error:", errorMessage);
+        process.exit(1);
+      }
     }
-  });
-
-program.parseAsync(process.argv);
+  })();
+}

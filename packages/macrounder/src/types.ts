@@ -13,17 +13,6 @@ export const ServiceConfigSchema = z.object({
 
 export type ServiceConfig = z.infer<typeof ServiceConfigSchema>;
 
-export const ConfigSchema = z.object({
-  services: z.array(ServiceConfigSchema),
-  logLevel: z
-    .enum(["debug", "info", "warn", "error"])
-    .default("info")
-    .optional(),
-  logDir: z.string().default("~/.macrounder/logs").optional(),
-});
-
-export type Config = z.infer<typeof ConfigSchema>;
-
 export interface ServiceStatus {
   name: string;
   pid?: number;
@@ -70,3 +59,6 @@ export interface ServiceEvents {
   updateCompleted: { service: string; version: string };
   updateFailed: { service: string; error: Error };
 }
+
+// Re-export AppConfig for use in IPC types
+export type { AppConfig } from "./app-config";

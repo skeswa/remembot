@@ -4,6 +4,8 @@ import { existsSync } from "node:fs";
 import { resolve } from "node:path";
 import type { ServiceConfig, ServiceStatus } from "./types";
 import type { Logger } from "pino";
+import { getLogFilePath } from "./logger";
+import { createWriteStream, type WriteStream } from "fs";
 
 interface ProcessInfo {
   process: ChildProcess;
@@ -11,6 +13,8 @@ interface ProcessInfo {
   startTime: Date;
   restartCount: number;
   lastError?: Error;
+  logStream?: WriteStream;
+  logFilePath: string;
 }
 
 export class ProcessManager extends EventEmitter {
@@ -18,10 +22,12 @@ export class ProcessManager extends EventEmitter {
   private readonly logger: Logger;
   private readonly maxRestarts = 5;
   private readonly restartDelay = 5000; // 5 seconds
+  private readonly logDir: string;
 
-  constructor(logger: Logger) {
+  constructor(logger: Logger, logDir: string) {
     super();
     this.logger = logger;
+    this.logDir = logDir;
   }
 
   async start(config: ServiceConfig): Promise<void> {
@@ -52,27 +58,49 @@ export class ProcessManager extends EventEmitter {
       detached: false,
     });
 
+    // Create log file for this service
+    const logFilePath = getLogFilePath(this.logDir, config.name);
+    const logStream = createWriteStream(logFilePath, { flags: "a" });
+
     const processInfo: ProcessInfo = {
       process: childProcess,
       config,
       startTime: new Date(),
       restartCount: 0,
+      logFilePath,
+      logStream,
     };
 
     this.processes.set(config.name, processInfo);
 
     // Handle stdout
     childProcess.stdout?.on("data", (data) => {
+      const output = data.toString();
+      const trimmedOutput = output.trim();
+
+      // Write to service log file
+      const timestamp = new Date().toISOString();
+      logStream.write(`[${timestamp}] [STDOUT] ${output}`);
+
+      // Also log to main logger
       this.logger.info(
-        { service: config.name, output: data.toString().trim() },
+        { service: config.name, output: trimmedOutput },
         "Service output",
       );
     });
 
     // Handle stderr
     childProcess.stderr?.on("data", (data) => {
+      const output = data.toString();
+      const trimmedOutput = output.trim();
+
+      // Write to service log file
+      const timestamp = new Date().toISOString();
+      logStream.write(`[${timestamp}] [STDERR] ${output}`);
+
+      // Also log to main logger
       this.logger.error(
-        { service: config.name, error: data.toString().trim() },
+        { service: config.name, error: trimmedOutput },
         "Service error output",
       );
     });
@@ -83,6 +111,9 @@ export class ProcessManager extends EventEmitter {
         { service: config.name, code, signal },
         "Service exited",
       );
+
+      // Close log stream
+      logStream.end();
 
       this.processes.delete(config.name);
       this.emit("stopped", { service: config.name, code });
@@ -99,6 +130,9 @@ export class ProcessManager extends EventEmitter {
         { service: config.name, error: error.message },
         "Service process error",
       );
+
+      // Close log stream
+      logStream.end();
 
       processInfo.lastError = error;
       this.processes.delete(config.name);
@@ -217,6 +251,11 @@ export class ProcessManager extends EventEmitter {
 
   isRunning(serviceName: string): boolean {
     return this.processes.has(serviceName);
+  }
+
+  getLogFilePath(serviceName: string): string | undefined {
+    const processInfo = this.processes.get(serviceName);
+    return processInfo?.logFilePath || getLogFilePath(this.logDir, serviceName);
   }
 
   async stopAll(): Promise<void> {

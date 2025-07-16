@@ -1,6 +1,12 @@
 import { describe, expect, test, beforeEach, afterEach } from "bun:test";
 import { ProcessManager } from "./process-manager";
-import { writeFileSync, rmSync, chmodSync } from "node:fs";
+import {
+  writeFileSync,
+  rmSync,
+  chmodSync,
+  mkdirSync,
+  existsSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import pino from "pino";
@@ -10,18 +16,23 @@ describe("ProcessManager", () => {
   let processManager: ProcessManager;
   let logger: pino.Logger;
   let testBinaryPath: string;
+  let logDir: string;
 
   beforeEach(() => {
     logger = pino({ level: "silent" });
-    processManager = new ProcessManager(logger);
+    logDir = join(tmpdir(), `test-logs-${Date.now()}`);
+    mkdirSync(logDir, { recursive: true });
+    processManager = new ProcessManager(logger, logDir);
 
-    // Create a test binary that just sleeps
+    // Create a test binary that sleeps for a short time
     testBinaryPath = join(tmpdir(), `test-binary-${Date.now()}.sh`);
     writeFileSync(
       testBinaryPath,
       `#!/bin/bash
 echo "Started"
-sleep 100
+# Use a trap to handle SIGTERM gracefully
+trap 'echo "Received SIGTERM"; exit 0' TERM
+sleep 10
 `,
     );
     chmodSync(testBinaryPath, 0o755);
@@ -30,6 +41,9 @@ sleep 100
   afterEach(async () => {
     await processManager.shutdown();
     rmSync(testBinaryPath, { force: true });
+    if (existsSync(logDir)) {
+      rmSync(logDir, { recursive: true, force: true });
+    }
   });
 
   test("should start a service", async () => {

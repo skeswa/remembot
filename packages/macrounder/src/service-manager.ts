@@ -4,7 +4,6 @@ import { resolve } from "node:path";
 import { homedir } from "node:os";
 import pino, { type Logger } from "pino";
 import type { ServiceConfig, ServiceStatus } from "./types";
-import { ConfigManager } from "./config-manager";
 import { AppConfigManager } from "./app-config-manager";
 import { ProcessManager } from "./process-manager";
 import { GitHubMonitor } from "./github-monitor";
@@ -17,7 +16,6 @@ interface ServiceManagerOptions {
 }
 
 export class ServiceManager extends EventEmitter {
-  private readonly configManager: ConfigManager | null;
   private readonly appConfigManager: AppConfigManager;
   private readonly processManager: ProcessManager;
   private readonly updateManager: UpdateManager;
@@ -25,36 +23,20 @@ export class ServiceManager extends EventEmitter {
   private readonly monitors: Map<string, GitHubMonitor> = new Map();
   private readonly checkIntervals: Map<string, NodeJS.Timeout> = new Map();
   private isRunning = false;
-  private useTomlConfig: boolean;
 
   constructor(options: ServiceManagerOptions = {}) {
     super();
 
-    // Check if we should use TOML config (new) or JSON config (legacy)
     this.appConfigManager = new AppConfigManager();
-    this.useTomlConfig =
-      this.appConfigManager.listApps().length > 0 ||
-      !existsSync(resolve(homedir(), ".macrounder", "config.json"));
-
-    if (this.useTomlConfig) {
-      this.configManager = null;
-    } else {
-      this.configManager = new ConfigManager(options.configPath);
-    }
 
     // Setup logging
     const logDir = this.resolveLogDir(
-      options.logDir ||
-        (this.useTomlConfig
-          ? this.appConfigManager.getLogDir()
-          : this.configManager!.getLogDir()),
+      options.logDir || this.appConfigManager.getLogDir(),
     );
     this.ensureLogDir(logDir);
 
     this.logger = pino({
-      level: this.useTomlConfig
-        ? this.appConfigManager.getLogLevel()
-        : this.configManager!.getLogLevel(),
+      level: this.appConfigManager.getLogLevel(),
       transport: {
         targets: [
           {
@@ -74,7 +56,7 @@ export class ServiceManager extends EventEmitter {
       },
     });
 
-    this.processManager = new ProcessManager(this.logger);
+    this.processManager = new ProcessManager(this.logger, logDir);
     this.updateManager = new UpdateManager(this.logger);
 
     this.setupEventHandlers();
@@ -117,9 +99,7 @@ export class ServiceManager extends EventEmitter {
     this.logger.info("Starting ServiceManager");
     this.isRunning = true;
 
-    const services = this.useTomlConfig
-      ? this.appConfigManager.getAllServices()
-      : this.configManager!.getAllServices();
+    const services = this.appConfigManager.getAllServices();
 
     for (const service of services) {
       try {
@@ -152,9 +132,7 @@ export class ServiceManager extends EventEmitter {
   }
 
   private startUpdateMonitoring(): void {
-    const services = this.useTomlConfig
-      ? this.appConfigManager.getAllServices()
-      : this.configManager!.getAllServices();
+    const services = this.appConfigManager.getAllServices();
 
     for (const service of services) {
       this.scheduleUpdateCheck(service);
@@ -206,9 +184,7 @@ export class ServiceManager extends EventEmitter {
   }
 
   async updateService(serviceName: string): Promise<void> {
-    const service = this.useTomlConfig
-      ? this.appConfigManager.getService(serviceName)
-      : this.configManager!.getService(serviceName);
+    const service = this.appConfigManager.getService(serviceName);
     if (!service) {
       throw new Error(`Service ${serviceName} not found`);
     }
@@ -266,19 +242,11 @@ export class ServiceManager extends EventEmitter {
     }
   }
 
-  async addService(service: ServiceConfig): Promise<void> {
-    if (!this.useTomlConfig && this.configManager) {
-      this.configManager.addService(service);
-    } else {
-      throw new Error(
-        "Use 'macrounder add' command to add apps with TOML config",
-      );
-    }
-
-    if (this.isRunning) {
-      await this.startService(service);
-      this.scheduleUpdateCheck(service);
-    }
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  async addService(_service: ServiceConfig): Promise<void> {
+    throw new Error(
+      "Use 'macrounder add' command to add apps with TOML config",
+    );
   }
 
   async removeService(serviceName: string): Promise<void> {
@@ -295,14 +263,9 @@ export class ServiceManager extends EventEmitter {
     }
 
     // Remove from config
-    if (!this.useTomlConfig && this.configManager) {
-      this.configManager.removeService(serviceName);
-    } else {
-      throw new Error(
-        "Use 'macrounder remove' command to remove apps with TOML config",
-      );
-    }
-    this.monitors.delete(serviceName);
+    throw new Error(
+      "Use 'macrounder remove' command to remove apps with TOML config",
+    );
   }
 
   async stopService(serviceName: string): Promise<void> {
@@ -310,9 +273,7 @@ export class ServiceManager extends EventEmitter {
   }
 
   async startServiceProcess(serviceName: string): Promise<void> {
-    const service = this.useTomlConfig
-      ? this.appConfigManager.getService(serviceName)
-      : this.configManager!.getService(serviceName);
+    const service = this.appConfigManager.getService(serviceName);
     if (!service) {
       throw new Error(`Service ${serviceName} not found`);
     }
@@ -330,9 +291,7 @@ export class ServiceManager extends EventEmitter {
 
     if (monitor) {
       // Add version information if available
-      const config = this.useTomlConfig
-        ? this.appConfigManager.getService(serviceName)
-        : this.configManager?.getService(serviceName);
+      const config = this.appConfigManager.getService(serviceName);
       if (config) {
         status.currentVersion = "unknown"; // Would need to implement version detection
       }
@@ -342,10 +301,12 @@ export class ServiceManager extends EventEmitter {
   }
 
   getAllStatuses(): ServiceStatus[] {
-    const services = this.useTomlConfig
-      ? this.appConfigManager.getAllServices()
-      : this.configManager!.getAllServices();
+    const services = this.appConfigManager.getAllServices();
     return services.map((service) => this.getServiceStatus(service.name));
+  }
+
+  getLogFilePath(serviceName: string): string | undefined {
+    return this.processManager.getLogFilePath(serviceName);
   }
 
   private async getCurrentVersion(

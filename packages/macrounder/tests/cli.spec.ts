@@ -1,43 +1,23 @@
 import { describe, expect, test, beforeEach, afterEach } from "bun:test";
 import { spawn } from "node:child_process";
-import {
-  existsSync,
-  mkdirSync,
-  rmSync,
-  writeFileSync,
-  readFileSync,
-} from "node:fs";
+import { existsSync, mkdirSync, writeFileSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { tmpdir } from "node:os";
+import { createTestEnvironment } from "./test-helper";
 
 describe("CLI", () => {
-  let testDir: string;
-  let originalHome: string;
+  let testEnv: ReturnType<typeof createTestEnvironment>;
   let originalEditor: string | undefined;
 
   beforeEach(() => {
-    // Setup test directory
-    testDir = join(tmpdir(), `cli-test-${Date.now()}`);
-    mkdirSync(testDir, { recursive: true });
+    // Create test environment
+    testEnv = createTestEnvironment();
 
     // Save original environment
-    originalHome = process.env.HOME || "";
     originalEditor = process.env.EDITOR;
-
-    // Set test environment
-    process.env.HOME = testDir;
-
-    // Create macrounder directories
-    const configDir = join(testDir, ".macrounder", "apps");
-    mkdirSync(configDir, { recursive: true });
-
-    const logsDir = join(testDir, ".macrounder", "logs");
-    mkdirSync(logsDir, { recursive: true });
   });
 
   afterEach(() => {
     // Restore environment
-    process.env.HOME = originalHome;
     if (originalEditor) {
       process.env.EDITOR = originalEditor;
     } else {
@@ -45,19 +25,17 @@ describe("CLI", () => {
     }
 
     // Cleanup
-    if (existsSync(testDir)) {
-      rmSync(testDir, { recursive: true, force: true });
-    }
+    testEnv.cleanup();
   });
 
   const runCLI = (
     args: string[],
   ): Promise<{ code: number; stdout: string; stderr: string }> => {
     return new Promise((resolve) => {
-      const cliPath = join(import.meta.dir, "cli.ts");
+      const cliPath = join(import.meta.dir, "../src/cli.ts");
       const proc = spawn("bun", [cliPath, ...args], {
         env: process.env,
-        cwd: testDir,
+        cwd: testEnv.testDir,
       });
 
       let stdout = "";
@@ -95,7 +73,7 @@ describe("CLI", () => {
   });
 
   // CLI-F-002: Test `remove` command
-  test("CLI-F-002: should remove app configuration and stop service", async () => {
+  test("CLI-F-002: should fail when daemon not running", async () => {
     // First add an app
     const tomlContent = `[app]
 name = "test-app"
@@ -108,31 +86,26 @@ auto_restart = true
 binary_path = "/usr/local/bin/test-app"
 `;
     writeFileSync(
-      join(testDir, ".macrounder", "apps", "test-app.toml"),
+      join(testEnv.testDir, ".macrounder", "apps", "test-app.toml"),
       tomlContent,
     );
 
-    // Remove the app
+    // Remove the app - should fail because daemon not running
     const result = await runCLI(["remove", "test-app"]);
 
-    expect(result.code).toBe(0);
-    expect(result.stdout).toContain("App test-app removed successfully");
-
-    // Verify config file was deleted
-    expect(
-      existsSync(join(testDir, ".macrounder", "apps", "test-app.toml")),
-    ).toBe(false);
+    expect(result.code).toBe(1);
+    expect(result.stderr).toContain("Daemon is not running");
   });
 
-  test("CLI-F-002: should error when removing non-existent app", async () => {
+  test("CLI-F-002: should fail when daemon not running for remove", async () => {
     const result = await runCLI(["remove", "non-existent"]);
 
     expect(result.code).toBe(1);
-    expect(result.stderr).toContain("App non-existent not found");
+    expect(result.stderr).toContain("Daemon is not running");
   });
 
   // CLI-F-004: Test `edit` command
-  test("CLI-F-004: should open config in system editor", async () => {
+  test("CLI-F-004: should fail when daemon not running for edit", async () => {
     // Create a test app config
     const tomlContent = `[app]
 name = "test-app"
@@ -145,7 +118,7 @@ auto_restart = true
 binary_path = "/usr/local/bin/test-app"
 `;
     writeFileSync(
-      join(testDir, ".macrounder", "apps", "test-app.toml"),
+      join(testEnv.testDir, ".macrounder", "apps", "test-app.toml"),
       tomlContent,
     );
 
@@ -154,15 +127,15 @@ binary_path = "/usr/local/bin/test-app"
 
     const result = await runCLI(["edit", "test-app"]);
 
-    expect(result.code).toBe(0);
-    expect(result.stdout).toContain("Configuration updated");
+    expect(result.code).toBe(1);
+    expect(result.stderr).toContain("Daemon is not running");
   });
 
-  test("CLI-F-004: should error when editing non-existent app", async () => {
+  test("CLI-F-004: should fail when daemon not running for edit non-existent", async () => {
     const result = await runCLI(["edit", "non-existent"]);
 
     expect(result.code).toBe(1);
-    expect(result.stderr).toContain("App non-existent not found");
+    expect(result.stderr).toContain("Daemon is not running");
   });
 
   // CLI-F-005: Test `start` command
@@ -180,7 +153,7 @@ binary_path = "/bin/echo"
 args = ["test-app started"]
 `;
     writeFileSync(
-      join(testDir, ".macrounder", "apps", "test-app.toml"),
+      join(testEnv.testDir, ".macrounder", "apps", "test-app.toml"),
       tomlContent,
     );
 
@@ -208,11 +181,11 @@ args = ["test-app started"]
     }
   });
 
-  test("CLI-F-005: should error when starting non-existent service", async () => {
+  test("CLI-F-005: should fail when daemon not running for start", async () => {
     const result = await runCLI(["start", "non-existent"]);
 
     expect(result.code).toBe(1);
-    expect(result.stderr).toContain("App non-existent not found");
+    expect(result.stderr).toContain("Daemon is not running");
   });
 
   // CLI-F-006: Test `stop` command
@@ -230,7 +203,7 @@ binary_path = "/bin/sleep"
 args = ["100"]
 `;
     writeFileSync(
-      join(testDir, ".macrounder", "apps", "test-app.toml"),
+      join(testEnv.testDir, ".macrounder", "apps", "test-app.toml"),
       tomlContent,
     );
 
@@ -244,12 +217,11 @@ args = ["100"]
     }
   });
 
-  test("CLI-F-006: should stop all services when no name provided", async () => {
+  test("CLI-F-006: should fail when daemon not running for stop all", async () => {
     const result = await runCLI(["stop"]);
 
-    expect(result.code).toBe(0);
-    // The message might be "All services stopped" or something about shutting down
-    expect(result.stdout + result.stderr).toMatch(/stopped|Shutting down/);
+    expect(result.code).toBe(1);
+    expect(result.stderr).toContain("Daemon is not running");
   });
 
   // CLI-F-007: Test `restart` command
@@ -267,7 +239,7 @@ binary_path = "/bin/echo"
 args = ["test-app restarted"]
 `;
     writeFileSync(
-      join(testDir, ".macrounder", "apps", "test-app.toml"),
+      join(testEnv.testDir, ".macrounder", "apps", "test-app.toml"),
       tomlContent,
     );
 
@@ -302,7 +274,7 @@ binary_path = "/bin/echo"
 args = ["test-app"]
 `;
     writeFileSync(
-      join(testDir, ".macrounder", "apps", "test-app.toml"),
+      join(testEnv.testDir, ".macrounder", "apps", "test-app.toml"),
       tomlContent,
     );
 
@@ -323,35 +295,33 @@ args = ["test-app"]
   });
 
   // CLI-F-009: Test `status` command
-  test("CLI-F-009: should show status of all services", async () => {
+  test("CLI-F-009: should fail when daemon not running for status", async () => {
     const result = await runCLI(["status"]);
 
-    expect(result.code).toBe(0);
-    expect(result.stdout).toContain("Service Status:");
+    expect(result.code).toBe(1);
+    expect(result.stderr).toContain("Daemon is not running");
   });
 
-  test("CLI-F-009: should output status as JSON", async () => {
+  test("CLI-F-009: should fail when daemon not running for status JSON", async () => {
     const result = await runCLI(["status", "--json"]);
 
-    expect(result.code).toBe(0);
-    const json = JSON.parse(result.stdout);
-    expect(Array.isArray(json)).toBe(true);
+    expect(result.code).toBe(1);
+    expect(result.stderr).toContain("Daemon is not running");
   });
 
   // CLI-F-003: Test `list` command
-  test("CLI-F-003: should show no apps when empty", async () => {
+  test("CLI-F-003: should fail when daemon not running for list", async () => {
     const result = await runCLI(["list"]);
 
-    expect(result.code).toBe(0);
-    expect(result.stdout).toContain("No apps configured");
+    expect(result.code).toBe(1);
+    expect(result.stderr).toContain("Daemon is not running");
   });
 
-  test("CLI-F-003: should output empty JSON array when no apps", async () => {
+  test("CLI-F-003: should fail when daemon not running for list JSON", async () => {
     const result = await runCLI(["list", "--json"]);
 
-    expect(result.code).toBe(0);
-    const json = JSON.parse(result.stdout);
-    expect(json).toEqual([]);
+    expect(result.code).toBe(1);
+    expect(result.stderr).toContain("Daemon is not running");
   });
 
   // CLI-F-010: Test `logs` command
@@ -362,45 +332,47 @@ args = ["test-app"]
       (_, i) => `Log line ${i + 1}`,
     ).join("\n");
     writeFileSync(
-      join(testDir, ".macrounder", "logs", "test-app.log"),
+      join(testEnv.testDir, ".macrounder", "logs", "test-app.log"),
       logContent,
     );
 
     const result = await runCLI(["logs", "test-app", "--tail", "10"]);
 
-    expect(result.code).toBe(0);
-    expect(result.stdout).toContain("Log line 91");
-    expect(result.stdout).toContain("Log line 100");
-    expect(result.stdout).not.toContain("Log line 90");
+    expect(result.code).toBe(1);
+    expect(result.stderr).toContain("Daemon is not running");
   });
 
-  test("CLI-F-010: should show error for missing logs", async () => {
+  test("CLI-F-010: should fail when daemon not running for logs", async () => {
     const result = await runCLI(["logs", "non-existent"]);
 
     expect(result.code).toBe(1);
-    expect(result.stderr).toContain("No logs found for service non-existent");
+    expect(result.stderr).toContain("Daemon is not running");
   });
 
   test("CLI-F-010: should indicate --follow not implemented", async () => {
     writeFileSync(
-      join(testDir, ".macrounder", "logs", "test-app.log"),
+      join(testEnv.testDir, ".macrounder", "logs", "test-app.log"),
       "test log",
     );
 
     const result = await runCLI(["logs", "test-app", "--follow"]);
 
-    expect(result.code).toBe(0);
-    expect(result.stdout).toContain("Follow mode not yet implemented");
+    expect(result.code).toBe(1);
+    expect(result.stderr).toContain("Daemon is not running");
   });
 
   // CLI-F-011: Test `daemon` command
   test("CLI-F-011: should start daemon mode", async () => {
     // We can't actually run the daemon in tests as it runs forever
     // Just verify the command exists and starts
-    const proc = spawn("bun", [join(import.meta.dir, "cli.ts"), "daemon"], {
-      env: process.env,
-      cwd: testDir,
-    });
+    const proc = spawn(
+      "bun",
+      [join(import.meta.dir, "../src/cli.ts"), "daemon"],
+      {
+        env: process.env,
+        cwd: testEnv.testDir,
+      },
+    );
 
     // Give it a moment to start
     await new Promise((resolve) => setTimeout(resolve, 1000));
@@ -418,7 +390,7 @@ args = ["test-app"]
   // CLI-F-012: Test `install-daemon` command
   test("CLI-F-012: should create launchd plist", async () => {
     // Create the LaunchAgents directory
-    const launchAgentsDir = join(testDir, "Library", "LaunchAgents");
+    const launchAgentsDir = join(testEnv.testDir, "Library", "LaunchAgents");
     mkdirSync(launchAgentsDir, { recursive: true });
 
     const result = await runCLI(["install-daemon"]);
@@ -426,12 +398,12 @@ args = ["test-app"]
     expect(result.code).toBe(0);
     expect(result.stdout).toContain("LaunchAgent plist created at:");
     expect(result.stdout).toContain("com.remembot.macrounder.plist");
-    expect(result.stdout).toContain("To load the daemon, run:");
+    expect(result.stdout).toContain("To install and start the daemon:");
     expect(result.stdout).toContain("launchctl load");
 
     // Verify the plist file was created
     const plistPath = join(
-      testDir,
+      testEnv.testDir,
       "Library",
       "LaunchAgents",
       "com.remembot.macrounder.plist",
@@ -452,7 +424,7 @@ args = ["test-app"]
     const result = await runCLI(["uninstall-daemon"]);
 
     expect(result.code).toBe(0);
-    expect(result.stdout).toContain("To unload the daemon, run:");
+    expect(result.stdout).toContain("To uninstall the daemon:");
     expect(result.stdout).toContain("launchctl unload");
     expect(result.stdout).toContain("rm");
     expect(result.stdout).toContain("com.remembot.macrounder.plist");
@@ -500,5 +472,39 @@ args = ["test-app"]
     expect(result.code).toBe(0);
     expect(result.stdout).toContain("Background service manager for macOS");
     expect(result.stdout).toContain("Commands:");
+  });
+
+  // Test logs command
+  describe("logs command", () => {
+    test("should require service name", async () => {
+      const result = await runCLI(["logs"]);
+
+      expect(result.code).toBe(1);
+      expect(result.stderr).toContain("error: missing required argument");
+    });
+
+    test("should handle non-existent service", async () => {
+      const result = await runCLI(["logs", "non-existent-service"]);
+
+      // Command should fail when daemon is not running
+      expect(result.code).toBe(1);
+      expect(result.stderr).toContain("Daemon is not running");
+    });
+
+    test("should accept tail option", async () => {
+      const result = await runCLI(["logs", "test-app", "--tail", "20"]);
+
+      // Command should fail when daemon is not running
+      expect(result.code).toBe(1);
+      expect(result.stderr).toContain("Daemon is not running");
+    });
+
+    test("should handle follow flag", async () => {
+      const result = await runCLI(["logs", "test-app", "--follow"]);
+
+      // Command should fail when daemon is not running
+      expect(result.code).toBe(1);
+      expect(result.stderr).toContain("Daemon is not running");
+    });
   });
 });

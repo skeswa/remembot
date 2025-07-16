@@ -18,6 +18,9 @@ This document enumerates all functional and non-functional requirements for Macr
 - **CLI**: Command Line Interface
 - **LOG**: Logging & Monitoring
 - **SYS**: System Integration
+- **DAEMON**: Daemon Process Management
+- **IPC**: Inter-Process Communication
+- **FSWT**: Filesystem Watching
 - **PERF**: Performance
 - **SEC**: Security
 - **COMP**: Compatibility
@@ -139,6 +142,72 @@ This document enumerates all functional and non-functional requirements for Macr
 
 **GHUB-F-010**: The system SHALL filter out pre-release and draft releases.
 
+### Daemon Process Management (DAEMON)
+
+**DAEMON-F-001**: The system SHALL run as a long-running daemon process that manages all services.
+
+**DAEMON-F-002**: The system SHALL start the daemon with `macrounder daemon` command or `--daemon` flag.
+
+**DAEMON-F-003**: The daemon SHALL create and listen on a Unix domain socket at `~/.macrounder/daemon.sock`.
+
+**DAEMON-F-004**: The daemon SHALL handle multiple concurrent client connections.
+
+**DAEMON-F-005**: The daemon SHALL maintain service state across client connections.
+
+**DAEMON-F-006**: The daemon SHALL gracefully handle client disconnections.
+
+**DAEMON-F-007**: The daemon SHALL provide health check endpoint for monitoring.
+
+**DAEMON-F-008**: The daemon SHALL automatically clean up socket file on shutdown.
+
+**DAEMON-F-009**: The daemon SHALL detect if another daemon instance is already running.
+
+**DAEMON-F-010**: The daemon SHALL persist state to survive restarts.
+
+### Inter-Process Communication (IPC)
+
+**IPC-F-001**: The system SHALL use JSON-RPC 2.0 protocol for client-daemon communication.
+
+**IPC-F-002**: The system SHALL support request-response pattern for commands.
+
+**IPC-F-003**: The system SHALL support event streaming for real-time updates.
+
+**IPC-F-004**: The system SHALL authenticate clients using filesystem permissions on the socket.
+
+**IPC-F-005**: The system SHALL handle IPC message framing with length-prefixed messages.
+
+**IPC-F-006**: The system SHALL implement timeout handling for IPC requests.
+
+**IPC-F-007**: The system SHALL support cancellation of long-running operations.
+
+**IPC-F-008**: The system SHALL provide detailed error messages for IPC failures.
+
+**IPC-F-009**: The system SHALL version the IPC protocol for compatibility.
+
+**IPC-F-010**: The system SHALL compress large IPC messages when beneficial.
+
+### Filesystem Watching (FSWT)
+
+**FSWT-F-001**: The daemon SHALL watch `~/.macrounder/apps/` directory for configuration changes.
+
+**FSWT-F-002**: The daemon SHALL detect file creation, modification, and deletion events.
+
+**FSWT-F-003**: The daemon SHALL validate configuration files before applying changes.
+
+**FSWT-F-004**: The daemon SHALL debounce filesystem events to prevent rapid reloads.
+
+**FSWT-F-005**: The daemon SHALL reload affected services when configuration changes.
+
+**FSWT-F-006**: The daemon SHALL log all configuration changes applied via filesystem.
+
+**FSWT-F-007**: The daemon SHALL handle permission errors gracefully when watching files.
+
+**FSWT-F-008**: The daemon SHALL support atomic file operations for configuration updates.
+
+**FSWT-F-009**: The daemon SHALL emit events for configuration changes.
+
+**FSWT-F-010**: The daemon SHALL maintain configuration history for rollback.
+
 ### Command Line Interface (CLI)
 
 **CLI-F-001**: The system SHALL provide `add` command to create new app configuration with required --repo flag.
@@ -162,6 +231,20 @@ This document enumerates all functional and non-functional requirements for Macr
 **CLI-F-010**: The system SHALL provide `logs` command to view service logs with --tail and --follow options.
 
 **CLI-F-011**: The system SHALL provide `daemon` command to run as background daemon.
+
+**CLI-F-018**: The CLI SHALL act as a client communicating with the daemon via IPC.
+
+**CLI-F-019**: The CLI SHALL handle daemon connection errors gracefully.
+
+**CLI-F-020**: The CLI SHALL auto-start daemon if not running (with user confirmation).
+
+**CLI-F-021**: The CLI SHALL support `--no-daemon` flag to bypass daemon for debugging.
+
+**CLI-F-022**: The CLI SHALL provide connection status in verbose mode.
+
+**CLI-F-023**: The CLI SHALL support streaming logs from daemon.
+
+**CLI-F-024**: The CLI SHALL handle daemon version mismatches.
 
 **CLI-F-012**: The system SHALL provide `install-daemon` command to create launchd plist.
 
@@ -209,6 +292,14 @@ This document enumerates all functional and non-functional requirements for Macr
 
 **SYS-F-006**: The system SHALL create .macrounder directory structure in user home.
 
+**SYS-F-007**: The system SHALL fork behavior based on command/flag (daemon vs client mode).
+
+**SYS-F-008**: The system SHALL be distributed as a single binary.
+
+**SYS-F-009**: The system SHALL detect execution mode from process arguments.
+
+**SYS-F-010**: The system SHALL support both standalone and runtime execution.
+
 ---
 
 ## Non-Functional Requirements
@@ -216,6 +307,14 @@ This document enumerates all functional and non-functional requirements for Macr
 ### Performance (PERF)
 
 **PERF-NF-001**: The system SHALL start services within 10 seconds of spawn request.
+
+**PERF-NF-006**: The IPC protocol SHALL handle requests with less than 50ms latency.
+
+**PERF-NF-007**: The daemon SHALL support at least 10 concurrent client connections.
+
+**PERF-NF-008**: Filesystem watching SHALL consume less than 1% CPU when idle.
+
+**PERF-NF-009**: The daemon SHALL handle configuration reloads without service interruption.
 
 **PERF-NF-002**: The system SHALL check for updates without blocking service operations.
 
@@ -240,6 +339,14 @@ This document enumerates all functional and non-functional requirements for Macr
 **SEC-NF-006**: The system SHALL use HTTPS for all GitHub API requests.
 
 **SEC-NF-007**: The system SHALL not run services with elevated privileges.
+
+**SEC-NF-008**: The IPC socket SHALL have restrictive permissions (0600).
+
+**SEC-NF-009**: The daemon SHALL validate all IPC inputs against schema.
+
+**SEC-NF-010**: The system SHALL prevent socket hijacking attacks.
+
+**SEC-NF-011**: The daemon SHALL rate-limit client requests to prevent DoS.
 
 ### Compatibility (COMP)
 
@@ -268,6 +375,14 @@ This document enumerates all functional and non-functional requirements for Macr
 **REL-NF-006**: The system SHALL maintain service availability during update process.
 
 **REL-NF-007**: The system SHALL handle missing binaries and configuration files gracefully.
+
+**REL-NF-008**: The daemon SHALL continue running if IPC errors occur.
+
+**REL-NF-009**: The CLI SHALL retry daemon connections with exponential backoff.
+
+**REL-NF-010**: The daemon SHALL recover from filesystem watching failures.
+
+**REL-NF-011**: The system SHALL maintain service availability during daemon restarts.
 
 ### Usability (USE)
 
@@ -309,8 +424,11 @@ This document enumerates all functional and non-functional requirements for Macr
 - PROC-F-001, PROC-F-002, PROC-F-004
 - UPDT-F-001, UPDT-F-002, UPDT-F-004
 - GHUB-F-001, GHUB-F-005
-- CLI-F-001, CLI-F-005, CLI-F-006, CLI-F-009
+- CLI-F-001, CLI-F-005, CLI-F-006, CLI-F-009, CLI-F-018, CLI-F-019
 - LOG-F-001, LOG-F-002
+- DAEMON-F-001, DAEMON-F-002, DAEMON-F-003, DAEMON-F-005
+- IPC-F-001, IPC-F-002, IPC-F-004
+- FSWT-F-001, FSWT-F-002, FSWT-F-003
 - All security requirements (SEC-NF-\*)
 
 ### Test Coverage Mapping
@@ -320,11 +438,3 @@ This document enumerates all functional and non-functional requirements for Macr
 - Update manager tests: UPDT-F-\*
 - GitHub monitor tests: GHUB-F-\*
 - Integration tests: SYS-F-_, REL-NF-_
-
----
-
-## Revision History
-
-| Version | Date       | Author | Description                        |
-| ------- | ---------- | ------ | ---------------------------------- |
-| 1.0.0   | 2025-01-16 | System | Initial requirements specification |

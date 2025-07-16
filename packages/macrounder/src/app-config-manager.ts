@@ -9,6 +9,7 @@ import {
 import { resolve, basename } from "node:path";
 import { homedir } from "node:os";
 import * as TOML from "@iarna/toml";
+import { getMacrounderHome } from "./config/paths";
 import type { AppConfig, GlobalConfig } from "./app-config";
 import {
   AppConfigSchema,
@@ -24,7 +25,7 @@ export class AppConfigManager {
   private globalConfig: GlobalConfig | null = null;
 
   constructor(baseDir?: string) {
-    this.baseDir = baseDir || resolve(homedir(), ".macrounder");
+    this.baseDir = baseDir || getMacrounderHome();
     this.appsDir = resolve(this.baseDir, "apps");
     this.globalConfigPath = resolve(this.baseDir, "config.toml");
     this.ensureDirectories();
@@ -40,6 +41,10 @@ export class AppConfigManager {
   }
 
   // App management methods
+  getApp(name: string): AppConfig {
+    return this.loadApp(name);
+  }
+
   loadApp(name: string): AppConfig {
     const configPath = this.getAppConfigPath(name);
 
@@ -184,67 +189,5 @@ export class AppConfigManager {
   // Helper methods
   private getAppConfigPath(name: string): string {
     return resolve(this.appsDir, `${name}.toml`);
-  }
-
-  // Migration helper from old JSON config
-  async migrateFromJson(jsonConfigPath?: string): Promise<void> {
-    const oldConfigPath =
-      jsonConfigPath || resolve(homedir(), ".macrounder", "config.json");
-
-    if (!existsSync(oldConfigPath)) {
-      return; // Nothing to migrate
-    }
-
-    try {
-      const jsonContent = readFileSync(oldConfigPath, "utf-8");
-      const oldConfig = JSON.parse(jsonContent);
-
-      // Migrate global settings
-      if (oldConfig.logLevel || oldConfig.logDir) {
-        const globalConfig: GlobalConfig = {
-          log_level: oldConfig.logLevel,
-          log_dir: oldConfig.logDir,
-        };
-        this.saveGlobalConfig(globalConfig);
-      }
-
-      // Migrate services to individual app configs
-      if (oldConfig.services && Array.isArray(oldConfig.services)) {
-        for (const service of oldConfig.services) {
-          const appConfig: AppConfig = {
-            app: {
-              name: service.name,
-              repository: service.repository,
-              check_interval: service.checkInterval || 300,
-              auto_start: service.autoStart ?? true,
-              auto_restart: true, // New field with default
-            },
-            build: {
-              working_directory: ".",
-            },
-            run: {
-              binary_path: service.binaryPath,
-              working_directory: service.workingDirectory || ".",
-              args: service.args || [],
-            },
-            environment: service.env || {},
-          };
-
-          this.saveApp(appConfig);
-        }
-      }
-
-      // Rename old config to backup
-      const backupPath = `${oldConfigPath}.backup`;
-      const fs = await import("node:fs");
-      fs.renameSync(oldConfigPath, backupPath);
-
-      console.log(`Migration complete. Old config backed up to: ${backupPath}`);
-    } catch (error) {
-      if (error instanceof Error) {
-        throw new Error(`Failed to migrate from JSON config: ${error.message}`);
-      }
-      throw error;
-    }
   }
 }

@@ -6,6 +6,7 @@
  * AppleScript commands and retrieving their results.
  */
 
+// @ts-expect-error - node-osascript doesn't have types
 import { execute as executeWithCallback } from "node-osascript";
 
 /**
@@ -50,12 +51,16 @@ function executeWithPromise(
   variables?: Record<string, unknown>,
 ): Promise<{ result: unknown; raw: unknown }> {
   return new Promise((resolve, reject) => {
-    executeWithCallback(script, variables, (err, result, raw) => {
-      if (err) {
-        reject(err);
-        return;
-      }
-      resolve({ result, raw });
-    });
+    executeWithCallback(
+      script,
+      variables,
+      (err: Error | null, result: unknown, raw: unknown) => {
+        if (err) {
+          reject(err);
+          return;
+        }
+        resolve({ result, raw });
+      },
+    );
   });
 }

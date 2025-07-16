@@ -2,22 +2,52 @@ import { describe, expect, test, beforeEach, mock } from "bun:test";
 import { GitHubMonitor } from "./github-monitor";
 import pino from "pino";
 
+// Helper to create mock Response objects
+function createMockResponse(init: {
+  ok: boolean;
+  status: number;
+  statusText?: string;
+  json?: () => Promise<any>;
+}): Response {
+  const response = {
+    ok: init.ok,
+    status: init.status,
+    statusText: init.statusText || (init.ok ? "OK" : "Error"),
+    headers: new Headers(),
+    type: "basic" as const,
+    url: "",
+    redirected: false,
+    body: null,
+    bodyUsed: false,
+    clone: function() { return createMockResponse(init); },
+    json: init.json || (() => Promise.resolve({})),
+    text: () => Promise.resolve(""),
+    blob: () => Promise.resolve(new Blob()),
+    arrayBuffer: () => Promise.resolve(new ArrayBuffer(0)),
+    formData: () => Promise.resolve(new FormData()),
+  };
+  return response as unknown as Response;
+}
+
 // Mock fetch globally
 const mockFetch = mock((url: string): Promise<Response> => {
   if (url.includes("/releases/latest")) {
     if (url.includes("not-found")) {
-      return Promise.resolve({
-        ok: false,
-        status: 404,
-        statusText: "Not Found",
-      });
+      return Promise.resolve(
+        createMockResponse({
+          ok: false,
+          status: 404,
+          statusText: "Not Found",
+        })
+      );
     }
 
-    return Promise.resolve({
-      ok: true,
-      status: 200,
-      json: () =>
-        Promise.resolve({
+    return Promise.resolve(
+      createMockResponse({
+        ok: true,
+        status: 200,
+        json: () =>
+          Promise.resolve({
           id: 1,
           tag_name: "v1.0.0",
           name: "Release 1.0.0",
@@ -36,15 +66,17 @@ const mockFetch = mock((url: string): Promise<Response> => {
             },
           ],
         }),
-    });
+      })
+    );
   }
 
   if (url.includes("/releases")) {
-    return Promise.resolve({
-      ok: true,
-      status: 200,
-      json: () =>
-        Promise.resolve([
+    return Promise.resolve(
+      createMockResponse({
+        ok: true,
+        status: 200,
+        json: () =>
+          Promise.resolve([
           {
             id: 1,
             tag_name: "v1.0.0",
@@ -66,14 +98,17 @@ const mockFetch = mock((url: string): Promise<Response> => {
             assets: [],
           },
         ]),
-    });
+      })
+    );
   }
 
-  return Promise.resolve({
-    ok: false,
-    status: 500,
-    statusText: "Internal Server Error",
-  });
+  return Promise.resolve(
+    createMockResponse({
+      ok: false,
+      status: 500,
+      statusText: "Internal Server Error",
+    })
+  );
 });
 
 globalThis.fetch = mockFetch as unknown as typeof fetch;
@@ -180,16 +215,18 @@ describe("GitHubMonitor", () => {
 
     for (const { current, latest, shouldUpdate } of testCases) {
       mockFetch.mockImplementationOnce(() =>
-        Promise.resolve({
-          ok: true,
-          status: 200,
-          statusText: "OK",
-          json: () =>
-            Promise.resolve({
-              tag_name: `v${latest}`,
-              assets: [],
-            }),
-        }),
+        Promise.resolve(
+          createMockResponse({
+            ok: true,
+            status: 200,
+            statusText: "OK",
+            json: () =>
+              Promise.resolve({
+                tag_name: `v${latest}`,
+                assets: [],
+              }),
+          })
+        )
       );
 
       monitor = new GitHubMonitor("owner/repo", logger, current);
@@ -213,11 +250,13 @@ describe("GitHubMonitor", () => {
 
   test("should handle API errors gracefully", async () => {
     mockFetch.mockImplementationOnce(() =>
-      Promise.resolve({
-        ok: false,
-        status: 500,
-        statusText: "Internal Server Error",
-      }),
+      Promise.resolve(
+        createMockResponse({
+          ok: false,
+          status: 500,
+          statusText: "Internal Server Error",
+        })
+      )
     );
 
     monitor = new GitHubMonitor("owner/repo", logger);
@@ -247,15 +286,17 @@ describe("GitHubMonitor", () => {
 
     for (const { input, expected } of testCases) {
       mockFetch.mockImplementationOnce(() =>
-        Promise.resolve({
-          ok: true,
-          status: 200,
-          json: () =>
-            Promise.resolve({
-              tag_name: input,
-              assets: [],
-            }),
-        }),
+        Promise.resolve(
+          createMockResponse({
+            ok: true,
+            status: 200,
+            json: () =>
+              Promise.resolve({
+                tag_name: input,
+                assets: [],
+              }),
+          })
+        )
       );
 
       monitor = new GitHubMonitor("owner/repo", logger);

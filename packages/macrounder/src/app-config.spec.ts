@@ -146,7 +146,6 @@ describe("App Configuration Tests", () => {
   // CONF-F-006: Automatic binary path detection
   test("CONF-F-006: should detect binary paths using common patterns", () => {
     const appConfig = createDefaultAppConfig("myapp", "owner/repo");
-    const serviceConfig = configManager.getService.bind(configManager);
 
     // Save and load to test the conversion
     configManager.saveApp(appConfig);
@@ -252,7 +251,7 @@ describe("App Configuration Tests", () => {
     expect(existsSync(newTestDir)).toBe(false);
 
     // Create manager - should create directories
-    const newManager = new AppConfigManager(newTestDir);
+    new AppConfigManager(newTestDir);
 
     // Verify directories were created
     expect(existsSync(newTestDir)).toBe(true);

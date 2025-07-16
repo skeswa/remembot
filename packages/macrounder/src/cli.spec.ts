@@ -1,4 +1,4 @@
-import { describe, expect, test, beforeEach, afterEach, mock } from "bun:test";
+import { describe, expect, test, beforeEach, afterEach } from "bun:test";
 import { spawn } from "node:child_process";
 import {
   existsSync,
@@ -97,18 +97,6 @@ describe("CLI", () => {
   // CLI-F-002: Test `remove` command
   test("CLI-F-002: should remove app configuration and stop service", async () => {
     // First add an app
-    const appConfig = {
-      app: {
-        name: "test-app",
-        repository: "owner/repo",
-        check_interval: 300,
-        auto_start: true,
-        auto_restart: true,
-      },
-      run: {
-        binary_path: "/usr/local/bin/test-app",
-      },
-    };
     const tomlContent = `[app]
 name = "test-app"
 repository = "owner/repo"

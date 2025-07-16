@@ -277,7 +277,7 @@ describe("GitHubMonitor", () => {
     // Check that fetch was called with proper headers
     expect(mockFetch).toHaveBeenCalled();
     const lastCall = mockFetch.mock.calls[mockFetch.mock.calls.length - 1];
-    expect(lastCall[0]).toContain("github.com");
+    expect(lastCall?.[0]).toContain("github.com");
   });
 
   // GHUB-F-010: Test filtering of pre-release and draft releases

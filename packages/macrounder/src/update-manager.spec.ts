@@ -405,7 +405,7 @@ describe("UpdateManager", () => {
     expect(existsSync(newDownloadDir)).toBe(false);
 
     // Create new UpdateManager with non-existent directory
-    const newManager = new UpdateManager(logger, newDownloadDir);
+    new UpdateManager(logger, newDownloadDir);
 
     // Directory should now exist
     expect(existsSync(newDownloadDir)).toBe(true);

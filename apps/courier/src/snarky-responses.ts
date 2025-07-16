@@ -22,6 +22,7 @@ const snarkyResponses = [
 ];
 
 export function getRandomSnarkyResponse(): string {
-  const response = snarkyResponses[Math.floor(Math.random() * snarkyResponses.length)];
+  const response =
+    snarkyResponses[Math.floor(Math.random() * snarkyResponses.length)];
   return response ?? "I literally can't even... 🤷";
 }

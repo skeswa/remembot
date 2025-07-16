@@ -1,14 +1,17 @@
 {
-  "name": "@remembot/imessage-cli",
-  "version": "0.2.0",
+  "name": "@remembot/macrounder",
+  "version": "0.1.0",
   "type": "module",
-  "private": true,
+  "release": {
+    "strategy": "npm"
+  },
   "main": "./src/index.ts",
   "types": "./src/index.ts",
   "scripts": {
-    "build": "tsc",
+    "build": "bun build --compile ./src/cli.ts --target bun --outfile ./dist/macrounder",
     "clean": "rm -rf dist",
-    "cli": "bun run ./src/index.ts",
+    "cli": "bun run ./src/cli.ts",
+    "test": "bun test",
     "lint": "eslint . --ext .ts,.tsx --report-unused-disable-directives --max-warnings 0",
     "check-types": "tsc --noEmit"
   },
@@ -16,13 +19,15 @@
     "@eslint/js": "^9.26.0",
     "@repo/eslint-config": "*",
     "@repo/typescript-config": "*",
-    "eslint": "^9.26.0",
     "@types/node": "^20.0.0",
+    "eslint": "^9.26.0",
     "typescript": "^5.0.0"
   },
   "dependencies": {
-    "@remembot/imessage": "workspace:*",
+    "@iarna/toml": "^2.2.5",
     "commander": "^14.0.0",
-    "pino": "^9.7.0"
+    "pino": "^9.7.0",
+    "pino-pretty": "^13.0.0",
+    "zod": "^3.22.0"
   }
 }

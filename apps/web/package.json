@@ -3,6 +3,21 @@
   "version": "0.2.5",
   "type": "module",
   "private": true,
+  "release": {
+    "strategy": "k8s",
+    "k8s": {
+      "configDirPath": "./k8s",
+      "kubeconfigSecretName": "RHUIDEAN_KUBECONFIG"
+    },
+    "deploy": {
+      "timestamp": "2025-06-19T12:00:00.000Z",
+      "version": "0.2.5"
+    },
+    "publish": {
+      "timestamp": "2025-06-19T12:00:00.000Z",
+      "version": "0.2.5"
+    }
+  },
   "scripts": {
     "dev": "dotenv -- next dev --turbopack",
     "clean": "rm -rf dist",

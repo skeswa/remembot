@@ -1,9 +1,14 @@
 {
   "name": "@remembot/imessage",
   "version": "0.2.0",
-  "publishedVersion": "0.2.0",
   "type": "module",
-  "private": true,
+  "release": {
+    "strategy": "npm",
+    "publish": {
+      "timestamp": "2025-06-19T12:00:00.000Z",
+      "version": "0.2.0"
+    }
+  },
   "main": "./src/index.ts",
   "types": "./src/index.ts",
   "scripts": {

@@ -3,6 +3,9 @@
   "version": "0.2.5",
   "type": "module",
   "private": true,
+  "release": {
+    "strategy": "local"
+  },
   "scripts": {
     "dev": "bun run --hot ./src/index.ts",
     "clean": "rm -rf dist",

@@ -1,0 +1,291 @@
+# Reusable workflow that publishes an app or package based on its release
+# strategy.
+#
+# For k8s apps: builds and pushes Docker images, updates k8s deployment manifests
+# For npm packages: publishes to npm registry (future implementation)
+#
+# This workflow is designed to be called by the
+# `publish-drifted-apps-and-packages.yaml` workflow.
+
+name: Publish App or Package
+
+on:
+  # Allows you to call this workflow from another one.
+  workflow_call:
+    inputs:
+      package_name:
+        description: "Name of the package/app to publish (directory name)"
+        required: true
+        type: string
+      package_type:
+        description: "Type of package: 'app' or 'package'"
+        required: true
+        type: string
+
+concurrency: publish-app-or-package_${{ github.ref }}_${{ inputs.package_name }}
+
+jobs:
+  pre-publish:
+    name: Pre-publish
+    runs-on: ubuntu-latest
+    outputs:
+      strategy: ${{ steps.read-release-strategy.outputs.strategy }}
+      version: ${{ steps.read-version.outputs.version }}
+      config_dir: ${{ steps.read-release-strategy.outputs.config_dir }}
+    steps:
+      # Checkout the repository code.
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Read the release strategy and version from package.json
+      - name: Read release strategy and version
+        id: read-release-strategy
+        run: |
+          # Determine the correct path based on package type
+          if [ "${{ inputs.package_type }}" == "app" ]; then
+            PACKAGE_JSON_PATH="apps/${{ inputs.package_name }}/package.json"
+          else
+            PACKAGE_JSON_PATH="packages/${{ inputs.package_name }}/package.json"
+          fi
+
+          if [ ! -f "$PACKAGE_JSON_PATH" ]; then
+            echo "strategy=none" >> $GITHUB_OUTPUT
+            echo "No package.json found for ${{ inputs.package_name }}."
+            exit 0
+          fi
+
+          # Read release strategy
+          RELEASE_STRATEGY=$(node -p "require('./$PACKAGE_JSON_PATH').release?.strategy || 'none'")
+          echo "strategy=$RELEASE_STRATEGY" >> $GITHUB_OUTPUT
+          echo "Release strategy for ${{ inputs.package_name }} is '$RELEASE_STRATEGY'."
+
+          # Read k8s config directory if applicable
+          if [ "$RELEASE_STRATEGY" == "k8s" ]; then
+            CONFIG_DIR=$(node -p "require('./$PACKAGE_JSON_PATH').release?.k8s?.configDirPath || './k8s'")
+            echo "config_dir=$CONFIG_DIR" >> $GITHUB_OUTPUT
+          fi
+
+      # Extract version
+      - name: Read version
+        id: read-version
+        run: |
+          if [ "${{ inputs.package_type }}" == "app" ]; then
+            PACKAGE_JSON_PATH="apps/${{ inputs.package_name }}/package.json"
+          else
+            PACKAGE_JSON_PATH="packages/${{ inputs.package_name }}/package.json"
+          fi
+
+          VERSION=$(node -p "require('./$PACKAGE_JSON_PATH').version")
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Version for ${{ inputs.package_name }} is '$VERSION'."
+
+  # Publish k8s app (Docker image)
+  publish-k8s-app:
+    name: Publish K8s App
+    runs-on: ubuntu-latest
+    needs: pre-publish
+    if: needs.pre-publish.outputs.strategy == 'k8s'
+    permissions:
+      contents: write
+      packages: write
+    steps:
+      # Checkout with full history for git operations
+      - name: Checkout Repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # Extract the project name from the root package.json file
+      - name: Extract project name
+        id: project-name
+        run: |
+          PROJECT_NAME=$(node -p "require('./package.json').name")
+          echo "project_name=$PROJECT_NAME" >> $GITHUB_OUTPUT
+          echo "Extracted project name: $PROJECT_NAME from ./package.json"
+
+      # Set up Docker Buildx for multi-architecture builds
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        with:
+          platforms: linux/amd64,linux/arm64
+          driver-opts: |
+            image=moby/buildkit:master
+            network=host
+
+      # Authenticate with GitHub Container Registry
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Generate Docker image metadata
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/${{ steps.project-name.outputs.project_name }}-${{ inputs.package_name }}
+          tags: |
+            type=sha,format=short
+            type=raw,value=latest
+            type=raw,value={{date 'YYYYMMDD-HHmmss'}}
+            type=raw,value=${{ needs.pre-publish.outputs.version }}
+
+      # Check if the versioned image already exists
+      - name: Check if image already exists
+        id: check_image
+        run: |
+          IMAGE_NAME="ghcr.io/${{ github.repository_owner }}/${{ steps.project-name.outputs.project_name }}-${{ inputs.package_name }}:${{ needs.pre-publish.outputs.version }}"
+          echo "Checking for image: $IMAGE_NAME"
+          if docker manifest inspect "$IMAGE_NAME" > /dev/null 2>&1; then
+            echo "Image $IMAGE_NAME already exists. Skipping build and push."
+            echo "image_exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "Image $IMAGE_NAME does not exist. Proceeding with build and push."
+            echo "image_exists=false" >> $GITHUB_OUTPUT
+          fi
+
+      # Build and push the Docker image if it doesn't exist
+      - name: Build and push
+        if: steps.check_image.outputs.image_exists == 'false'
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./apps/${{ inputs.package_name }}/Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          platforms: linux/amd64,linux/arm64
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # Update k8s deployment manifest and release field
+      - name: Update k8s manifest and release field
+        run: |
+          # Set the base image name
+          BASE_IMAGE="ghcr.io/${{ github.repository_owner }}/${{ steps.project-name.outputs.project_name }}-${{ inputs.package_name }}"
+          VERSION="${{ needs.pre-publish.outputs.version }}"
+          CONFIG_DIR="${{ needs.pre-publish.outputs.config_dir }}"
+          TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%S.000Z")
+
+          # Update k8s deployment manifest
+          DEPLOYMENT_FILE="apps/${{ inputs.package_name }}/${CONFIG_DIR}/deployment.yaml"
+          if [ -f "$DEPLOYMENT_FILE" ]; then
+            TMP_FILE=$(mktemp)
+            while IFS= read -r line; do
+              if [[ $line =~ ^[[:space:]]*image:[[:space:]]* ]]; then
+                INDENT=$(echo "$line" | sed -E 's/^([[:space:]]*).*/\1/')
+                echo "${INDENT}image: ${BASE_IMAGE}:${VERSION}" >> "$TMP_FILE"
+              else
+                echo "$line" >> "$TMP_FILE"
+              fi
+            done < "$DEPLOYMENT_FILE"
+            mv "$TMP_FILE" "$DEPLOYMENT_FILE"
+            echo "Updated k8s deployment to use image: ${BASE_IMAGE}:${VERSION}"
+          fi
+
+          # Update release.publish field in package.json
+          cd apps/${{ inputs.package_name }}
+          node -e "
+            const fs = require('fs');
+            const pkg = require('./package.json');
+            if (!pkg.release) pkg.release = {};
+            if (!pkg.release.publish) pkg.release.publish = {};
+            pkg.release.publish.version = '$VERSION';
+            pkg.release.publish.timestamp = '$TIMESTAMP';
+            fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n');
+          "
+          cd ../..
+
+          # Configure git and commit
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
+          git add apps/${{ inputs.package_name }}/package.json
+          [ -f "$DEPLOYMENT_FILE" ] && git add "$DEPLOYMENT_FILE"
+          git commit -m "chore: publish ${{ inputs.package_name }} version $VERSION" || echo "No changes to commit"
+
+      # Push changes with retry logic
+      - name: Push changes
+        run: |
+          BRANCH_NAME="${{ github.ref_name }}"
+          for i in 1 2 3; do
+            echo "Pull/Push attempt $i for branch ${BRANCH_NAME}"
+            if git pull --rebase origin "${BRANCH_NAME}" && git push origin "${BRANCH_NAME}"; then
+              echo "Push successful on attempt $i."
+              exit 0
+            fi
+            SLEEP_DURATION=$(($RANDOM % 5 + 5))
+            echo "Pull/Push attempt $i failed. Retrying in $SLEEP_DURATION seconds..."
+            sleep $SLEEP_DURATION
+          done
+          echo "Failed to push changes after multiple retries."
+          exit 1
+
+  # Publish npm package
+  publish-npm-package:
+    name: Publish NPM Package
+    runs-on: ubuntu-latest
+    needs: pre-publish
+    if: needs.pre-publish.outputs.strategy == 'npm'
+    permissions:
+      contents: write
+      packages: write
+    steps:
+      # Checkout with full history for git operations
+      - name: Checkout Repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # Update release.publish field in package.json
+      - name: Update release.publish field
+        run: |
+          VERSION="${{ needs.pre-publish.outputs.version }}"
+          TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%S.000Z")
+
+          cd packages/${{ inputs.package_name }}
+          node -e "
+            const fs = require('fs');
+            const pkg = require('./package.json');
+            if (!pkg.release) pkg.release = {};
+            if (!pkg.release.publish) pkg.release.publish = {};
+            pkg.release.publish.version = '$VERSION';
+            pkg.release.publish.timestamp = '$TIMESTAMP';
+            fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n');
+          "
+
+          # Configure git and commit
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
+          git add package.json
+          git commit -m "chore: publish ${{ inputs.package_name }} version $VERSION" || echo "No changes to commit"
+
+          echo "Updated release.publish for ${{ inputs.package_name }} to version $VERSION"
+
+      # Push changes with retry logic
+      - name: Push changes
+        run: |
+          BRANCH_NAME="${{ github.ref_name }}"
+          for i in 1 2 3; do
+            echo "Pull/Push attempt $i for branch ${BRANCH_NAME}"
+            if git pull --rebase origin "${BRANCH_NAME}" && git push origin "${BRANCH_NAME}"; then
+              echo "Push successful on attempt $i."
+              exit 0
+            fi
+            SLEEP_DURATION=$(($RANDOM % 5 + 5))
+            echo "Pull/Push attempt $i failed. Retrying in $SLEEP_DURATION seconds..."
+            sleep $SLEEP_DURATION
+          done
+          echo "Failed to push changes after multiple retries."
+          exit 1
+
+  # Deploy k8s app after publishing
+  deploy-k8s-app:
+    name: Deploy K8s App
+    needs: [pre-publish, publish-k8s-app]
+    if: needs.pre-publish.outputs.strategy == 'k8s'
+    uses: ./.github/workflows/deploy-app.yaml
+    secrets: inherit
+    with:
+      app_name: ${{ inputs.package_name }}

@@ -57,6 +57,8 @@ function executeWithTimeout(
   variables?: Record<string, unknown>,
 ): Promise<{ result: unknown; raw: unknown }> {
   return new Promise((resolve, reject) => {
+    let timeoutId: NodeJS.Timeout | undefined;
+
     const childProcess = executeWithCallback(
       script,
       variables,
@@ -74,38 +76,11 @@ function executeWithTimeout(
     );
 
     // Set up timeout
-    const timeoutId = setTimeout(() => {
+    timeoutId = setTimeout(() => {
       if (childProcess && childProcess.kill) {
         childProcess.kill();
       }
       reject(new Error(`AppleScript execution timed out after ${timeoutMs}ms`));
     }, timeoutMs);
-  });
-}
-
-/**
- * Execute an AppleScript string, optionally injecting variables
- *
- * @param script The AppleScript code to execute
- * @param variables Optional object to inject variables into the script
- * @returns a promise that resolves with the result and raw output of the
- *    AppleScript execution
- */
-function executeWithPromise(
-  script: string,
-  variables?: Record<string, unknown>,
-): Promise<{ result: unknown; raw: unknown }> {
-  return new Promise((resolve, reject) => {
-    executeWithCallback(
-      script,
-      variables,
-      (err: Error | null, result: unknown, raw: unknown) => {
-        if (err) {
-          reject(err);
-          return;
-        }
-        resolve({ result, raw });
-      },
-    );
   });
 }

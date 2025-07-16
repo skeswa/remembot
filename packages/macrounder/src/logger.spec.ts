@@ -35,7 +35,7 @@ describe("Logging", () => {
 
     // Create global config with log settings
     const globalConfigPath = join(testDir, ".macrounder", "config.toml");
-    const globalConfig = `log_level = "debug"
+    const globalConfig = `log_level = "info"
 log_dir = "~/.macrounder/logs"
 `;
     writeFileSync(globalConfigPath, globalConfig);
@@ -58,7 +58,7 @@ log_dir = "~/.macrounder/logs"
     expect(existsSync(logsDir)).toBe(true);
 
     // ServiceManager will write logs to this directory when it performs operations
-    const manager = new ServiceManager();
+    const manager = new ServiceManager({ logDir: logsDir });
 
     // The constructor itself creates the log transports
     expect(manager).toBeDefined();
@@ -67,7 +67,7 @@ log_dir = "~/.macrounder/logs"
   // LOG-F-002: Test log level support
   test("LOG-F-002: should respect configured log level", () => {
     // Test that AppConfigManager has a getLogLevel method
-    const configManager = new AppConfigManager();
+    const configManager = new AppConfigManager(join(testDir, ".macrounder"));
     const logLevel = configManager.getLogLevel();
 
     // It should return a valid log level

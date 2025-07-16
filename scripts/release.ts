@@ -138,7 +138,7 @@ function readPackageJsons(): PackageJson[] {
 function readPackageJsonsOfChangedPackages(): PackageJson[] {
   return readPackageJsons()
     .filter(
-      ({ release, version }) => release && version !== release.publish?.version
+      ({ release, version }) => release && version !== release.publish?.version,
     )
     .sort((a, b) => a.name.localeCompare(b.name));
 }

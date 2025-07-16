@@ -111,17 +111,20 @@ CMD ["./index"]
 #### Core Workflows
 
 ##### Release Workflow (`.github/workflows/release.yaml`)
+
 - Triggered on push to main
 - Uses changesets/action to manage versions
 - Runs custom `bun release` script to create git tags for changed packages
 - Triggers `publish-drifted-apps-and-packages` workflow when releases are created
 
 ##### Publish Drifted Apps & Packages (`.github/workflows/publish-drifted-apps-and-packages.yaml`)
+
 - Finds all packages where `version` differs from `release.publish.version`
 - Filters by release strategy (k8s, npm, or local)
 - Triggers `publish-app-or-package` workflow for each drifted package
 
 ##### Publish App or Package (`.github/workflows/publish-app-or-package.yaml`)
+
 - Unified workflow for publishing both apps and packages
 - For k8s apps:
   - Builds multi-arch Docker images
@@ -136,12 +139,14 @@ CMD ["./index"]
 #### Deployment Workflows
 
 ##### Deploy App (`.github/workflows/deploy-app.yaml`)
+
 - Reads `release.strategy`, `release.k8s.configDirPath`, and `release.k8s.kubeconfigSecretName` from package.json
 - Uses the specified GitHub secret to access the target Kubernetes cluster
 - Applies k8s manifests in order
 - Updates `release.deploy` field after successful deployment
 
 ##### Deploy Changed Apps (`.github/workflows/deploy-changed-apps.yaml`)
+
 - Triggered when YAML/JSON files change in apps/
 - Detects which apps were affected by working backwards from changed files
 - Only deploys if:
@@ -150,6 +155,7 @@ CMD ["./index"]
   - Published version differs from deployed version
 
 ##### Deploy All Apps (`.github/workflows/deploy-all-apps.yaml`)
+
 - Manual workflow to deploy all k8s apps
 - Finds apps by checking `release.strategy` in package.json
 - Verifies k8s config directories exist
@@ -166,7 +172,7 @@ This project uses the Angreal deployment pattern - a comprehensive workflow for 
   - Creates git tags in format `packageName@version` for changed packages
   - Works with three release strategies:
     - **k8s**: For deployable applications with Docker/Kubernetes
-    - **npm**: For publishable packages to npm registry  
+    - **npm**: For publishable packages to npm registry
     - **local**: For internal packages that aren't published externally
 
 #### Release Field Structure

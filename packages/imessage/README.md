@@ -75,7 +75,7 @@ const recentChats = listChats(db, 10);
 // Enrich chat participants with names from your Contacts app.
 const chatsWithNames = await applyNamesToHandles(
   executor,
-  recentChats.flatMap((c) => c.participants)
+  recentChats.flatMap((c) => c.participants),
 );
 console.log(JSON.stringify(chatsWithNames, null, 2));
 

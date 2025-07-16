@@ -1,0 +1,20 @@
+# Dependencies
+node_modules
+
+# Build outputs
+dist
+*.tsbuildinfo
+
+# Logs
+*.log
+
+# OS files
+.DS_Store
+
+# Test artifacts
+coverage
+.nyc_output
+
+# Editor directories
+.vscode
+.idea

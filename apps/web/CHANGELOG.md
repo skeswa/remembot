@@ -1,5 +1,16 @@
 # web
 
+## 0.3.0
+
+### Minor Changes
+
+- 1056f0e: Radically iterated on the deployment process; added a way to run courier on a mac as well
+
+### Patch Changes
+
+- Updated dependencies [1056f0e]
+  - @repo/ui@0.1.0
+
 ## 0.2.5
 
 ### Patch Changes

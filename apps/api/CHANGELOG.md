@@ -1,5 +1,11 @@
 # api
 
+## 0.3.0
+
+### Minor Changes
+
+- 1056f0e: Radically iterated on the deployment process; added a way to run courier on a mac as well
+
 ## 0.2.5
 
 ### Patch Changes

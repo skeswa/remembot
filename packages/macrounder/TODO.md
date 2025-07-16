@@ -87,17 +87,17 @@ This document tracks test coverage for all requirements defined in docs/requirem
 ### cli.spec.ts
 
 - [x] **CLI-F-001**: Test `add` command with required --repo flag
-- [ ] **CLI-F-002**: Test `remove` command (delete config and stop service)
+- [x] **CLI-F-002**: Test `remove` command (delete config and stop service)
 - [x] **CLI-F-003**: Test `list` command showing all configured apps
-- [ ] **CLI-F-004**: Test `edit` command opening config in system editor
-- [ ] **CLI-F-005**: Test `start` command for starting services
-- [ ] **CLI-F-006**: Test `stop` command for stopping services
-- [ ] **CLI-F-007**: Test `restart` command for restarting services
-- [ ] **CLI-F-008**: Test `update` command for manual update checks
-- [ ] **CLI-F-009**: Test `status` command showing service information
+- [x] **CLI-F-004**: Test `edit` command opening config in system editor
+- [x] **CLI-F-005**: Test `start` command for starting services
+- [x] **CLI-F-006**: Test `stop` command for stopping services
+- [x] **CLI-F-007**: Test `restart` command for restarting services
+- [x] **CLI-F-008**: Test `update` command for manual update checks
+- [x] **CLI-F-009**: Test `status` command showing service information
 - [x] **CLI-F-010**: Test `logs` command with --tail and --follow options
-- [ ] **CLI-F-011**: Test `daemon` command for background daemon mode
-- [ ] **CLI-F-012**: Test `install-daemon` command creating launchd plist
+- [x] **CLI-F-011**: Test `daemon` command for background daemon mode
+- [x] **CLI-F-012**: Test `install-daemon` command creating launchd plist
 - [x] **CLI-F-013**: Test `uninstall-daemon` command showing removal instructions
 - [x] **CLI-F-015**: Test --json output format for list and status commands
 - [x] **CLI-F-016**: Test command argument validation and error messages
@@ -105,13 +105,13 @@ This document tracks test coverage for all requirements defined in docs/requirem
 
 ## Logging & Monitoring Tests (LOG)
 
-### logger.spec.ts (NEW)
+### logger.spec.ts
 
 - [x] **LOG-F-001**: Test writing logs to configurable directory (default: ~/.macrounder/logs)
-- [ ] **LOG-F-002**: Test log level support (debug, info, warn, error)
-- [ ] **LOG-F-003**: Test separate log files for each service
+- [x] **LOG-F-002**: Test log level support (debug, info, warn, error)
+- [x] **LOG-F-003**: Test separate log files for each service
 - [ ] **LOG-F-004**: Test daemon stdout/stderr to separate log files
-- [ ] **LOG-F-005**: Test timestamp inclusion in log entries
+- [x] **LOG-F-005**: Test timestamp inclusion in log entries
 - [ ] **LOG-F-006**: Test logging service lifecycle events
 - [ ] **LOG-F-007**: Test logging update events
 - [ ] **LOG-F-008**: Test logging child process stdout and stderr

@@ -57,7 +57,7 @@ function executeWithTimeout(
   variables?: Record<string, unknown>,
 ): Promise<{ result: unknown; raw: unknown }> {
   return new Promise((resolve, reject) => {
-    let timeoutId: NodeJS.Timeout | undefined;
+    let timeoutId: NodeJS.Timeout | undefined = undefined;
 
     const childProcess = executeWithCallback(
       script,

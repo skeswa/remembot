@@ -8,7 +8,7 @@
   "main": "./src/index.ts",
   "types": "./src/index.ts",
   "scripts": {
-    "build": "tsc",
+    "build": "bun build --compile ./src/cli.ts --target bun --outfile ./dist/macrounder",
     "clean": "rm -rf dist",
     "cli": "bun run ./src/cli.ts",
     "test": "bun test",

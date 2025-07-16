@@ -4,7 +4,7 @@ import { writeFileSync, rmSync, chmodSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import pino from "pino";
-import type { ChildProcess } from "node:child_process";
+// ChildProcess type import removed - not used
 
 describe("ProcessManager", () => {
   let processManager: ProcessManager;
@@ -213,12 +213,9 @@ sleep 1
 
     let output = "";
     processManager.on("started", () => {
-      const processInfo = (
-        processManager as ProcessManager & {
-          processes: Map<string, { process: ChildProcess }>;
-        }
-      ).processes.get("env-test");
-      processInfo.process.stdout?.on("data", (data: Buffer) => {
+      // @ts-expect-error - accessing private property for testing
+      const processInfo = processManager.processes.get("env-test");
+      processInfo?.process.stdout?.on("data", (data: Buffer) => {
         output += data.toString();
       });
     });
@@ -256,12 +253,9 @@ sleep 1
 
     let output = "";
     processManager.on("started", () => {
-      const processInfo = (
-        processManager as ProcessManager & {
-          processes: Map<string, { process: ChildProcess }>;
-        }
-      ).processes.get("arg-test");
-      processInfo.process.stdout?.on("data", (data: Buffer) => {
+      // @ts-expect-error - accessing private property for testing
+      const processInfo = processManager.processes.get("arg-test");
+      processInfo?.process.stdout?.on("data", (data: Buffer) => {
         output += data.toString();
       });
     });
@@ -397,12 +391,9 @@ exit 1
     await processManager.start(config);
 
     // Kill the process to trigger exit
-    const processInfo = (
-      processManager as ProcessManager & {
-        processes: Map<string, { process: ChildProcess }>;
-      }
-    ).processes.get("no-auto-start");
-    processInfo.process.kill();
+    // @ts-expect-error - accessing private property for testing
+    const processInfo = processManager.processes.get("no-auto-start");
+    processInfo?.process.kill();
 
     // Wait to ensure no auto-restart happens
     await new Promise((resolve) => setTimeout(resolve, 1000));
@@ -440,12 +431,9 @@ sleep 1
 
     let output = "";
     processManager.on("started", () => {
-      const processInfo = (
-        processManager as ProcessManager & {
-          processes: Map<string, { process: ChildProcess }>;
-        }
-      ).processes.get("cwd-test");
-      processInfo.process.stdout?.on("data", (data: Buffer) => {
+      // @ts-expect-error - accessing private property for testing
+      const processInfo = processManager.processes.get("cwd-test");
+      processInfo?.process.stdout?.on("data", (data: Buffer) => {
         output += data.toString();
       });
     });
@@ -488,15 +476,12 @@ sleep 1
     let stdout = "";
     let stderr = "";
     processManager.on("started", () => {
-      const processInfo = (
-        processManager as ProcessManager & {
-          processes: Map<string, { process: ChildProcess }>;
-        }
-      ).processes.get("output-test");
-      processInfo.process.stdout?.on("data", (data: Buffer) => {
+      // @ts-expect-error - accessing private property for testing
+      const processInfo = processManager.processes.get("output-test");
+      processInfo?.process.stdout?.on("data", (data: Buffer) => {
         stdout += data.toString();
       });
-      processInfo.process.stderr?.on("data", (data: Buffer) => {
+      processInfo?.process.stderr?.on("data", (data: Buffer) => {
         stderr += data.toString();
       });
     });

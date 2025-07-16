@@ -333,8 +333,18 @@ program
         "com.remembot.macrounder.plist",
       );
 
-      const binaryPath = process.argv[0]; // Path to bun
-      const scriptPath = import.meta.path; // Path to this CLI script
+      // Check if running as compiled binary
+      const isCompiled = process.argv[1] === undefined;
+      let programArgs: string[];
+      
+      if (isCompiled) {
+        // Running as compiled binary
+        programArgs = [process.execPath, "daemon"];
+      } else {
+        // Running with bun runtime
+        const scriptPath = import.meta.path.replace("file://", "");
+        programArgs = [process.argv[0]!, scriptPath, "daemon"];
+      }
 
       const plist = `<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -344,9 +354,7 @@ program
     <string>com.remembot.macrounder</string>
     <key>ProgramArguments</key>
     <array>
-        <string>${binaryPath}</string>
-        <string>${scriptPath}</string>
-        <string>daemon</string>
+${programArgs.map(arg => `        <string>${arg}</string>`).join('\n')}
     </array>
     <key>RunAtLoad</key>
     <true/>

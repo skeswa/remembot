@@ -13,6 +13,7 @@ import pino from "pino";
 import type { GitHubRelease, ServiceConfig, GitHubAsset } from "./types";
 
 // Type helpers for accessing private methods
+// @ts-expect-error - type is not used due to ts-expect-error comments
 type UpdateManagerWithPrivates = UpdateManager & {
   findMacOSAsset: (
     assets: GitHubAsset[],
@@ -100,10 +101,8 @@ describe("UpdateManager", () => {
       },
     ];
 
-    const asset = (updateManager as UpdateManagerWithPrivates).findMacOSAsset(
-      assets,
-      "app",
-    );
+    // @ts-expect-error - accessing private method for testing
+    const asset = updateManager.findMacOSAsset(assets, "app");
 
     expect(asset).toBeDefined();
     expect(asset?.name).toBe("app-darwin-arm64");
@@ -134,10 +133,8 @@ describe("UpdateManager", () => {
       },
     ];
 
-    const asset = (updateManager as UpdateManagerWithPrivates).findMacOSAsset(
-      assets,
-      "app",
-    );
+    // @ts-expect-error - accessing private method for testing
+    const asset = updateManager.findMacOSAsset(assets, "app");
 
     expect(asset?.name).toBe("app-darwin-x64");
   });
@@ -151,9 +148,8 @@ describe("UpdateManager", () => {
       contentType: "application/octet-stream",
     };
 
-    const downloadPath = await (
-      updateManager as UpdateManagerWithPrivates
-    ).downloadAsset(asset, "test");
+    // @ts-expect-error - accessing private method for testing
+    const downloadPath = await updateManager.downloadAsset(asset, "test");
 
     expect(existsSync(downloadPath)).toBe(true);
     expect(downloadPath).toContain("test-");
@@ -173,7 +169,8 @@ describe("UpdateManager", () => {
     };
 
     await expect(
-      (updateManager as UpdateManagerWithPrivates).downloadAsset(asset, "test"),
+      // @ts-expect-error - accessing private method for testing
+      updateManager.downloadAsset(asset, "test"),
     ).rejects.toThrow("Downloaded file size mismatch");
   });
 
@@ -181,9 +178,8 @@ describe("UpdateManager", () => {
     const binaryPath = join(testDir, "current-binary");
     writeFileSync(binaryPath, "current version");
 
-    const backupPath = await (
-      updateManager as UpdateManagerWithPrivates
-    ).backupCurrentBinary(binaryPath);
+    // @ts-expect-error - accessing private method for testing
+    const backupPath = await updateManager.backupCurrentBinary(binaryPath);
 
     expect(backupPath).not.toBeNull();
     expect(existsSync(backupPath!)).toBe(true);
@@ -194,9 +190,8 @@ describe("UpdateManager", () => {
   test("should handle missing binary backup", async () => {
     const binaryPath = join(testDir, "non-existent");
 
-    const backupPath = await (
-      updateManager as UpdateManagerWithPrivates
-    ).backupCurrentBinary(binaryPath);
+    // @ts-expect-error - accessing private method for testing
+    const backupPath = await updateManager.backupCurrentBinary(binaryPath);
 
     expect(backupPath).toBeNull();
   });
@@ -207,10 +202,8 @@ describe("UpdateManager", () => {
 
     writeFileSync(sourcePath, "new version");
 
-    await (updateManager as UpdateManagerWithPrivates).installBinary(
-      sourcePath,
-      targetPath,
-    );
+    // @ts-expect-error - accessing private method for testing
+    await updateManager.installBinary(sourcePath, targetPath);
 
     expect(existsSync(targetPath)).toBe(true);
     expect(readFileSync(targetPath, "utf-8")).toBe("new version");
@@ -346,10 +339,8 @@ describe("UpdateManager", () => {
 
     writeFileSync(sourcePath, "#!/bin/bash\necho hello");
 
-    await (updateManager as UpdateManagerWithPrivates).installBinary(
-      sourcePath,
-      targetPath,
-    );
+    // @ts-expect-error - accessing private method for testing
+    await updateManager.installBinary(sourcePath, targetPath);
 
     expect(existsSync(targetPath)).toBe(true);
 
@@ -407,10 +398,8 @@ describe("UpdateManager", () => {
       },
     ];
 
-    const asset = (updateManager as UpdateManagerWithPrivates).findMacOSAsset(
-      assets,
-      "app",
-    );
+    // @ts-expect-error - accessing private method for testing
+    const asset = updateManager.findMacOSAsset(assets, "app");
 
     // Should pick darwin-arm64 as highest priority
     expect(asset?.name).toBe("app-darwin-arm64");

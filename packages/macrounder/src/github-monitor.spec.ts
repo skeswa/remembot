@@ -3,7 +3,7 @@ import { GitHubMonitor } from "./github-monitor";
 import pino from "pino";
 
 // Mock fetch globally
-const mockFetch = mock((url: string) => {
+const mockFetch = mock((url: string): Promise<any> => {
   if (url.includes("/releases/latest")) {
     if (url.includes("not-found")) {
       return Promise.resolve({
@@ -179,18 +179,17 @@ describe("GitHubMonitor", () => {
     ];
 
     for (const { current, latest, shouldUpdate } of testCases) {
-      mockFetch.mockImplementationOnce(
-        () =>
-          Promise.resolve({
-            ok: true,
-            status: 200,
-            statusText: "OK",
-            json: () =>
-              Promise.resolve({
-                tag_name: `v${latest}`,
-                assets: [],
-              }),
-          }) as unknown as Response,
+      mockFetch.mockImplementationOnce(() =>
+        Promise.resolve({
+          ok: true,
+          status: 200,
+          statusText: "OK",
+          json: () =>
+            Promise.resolve({
+              tag_name: `v${latest}`,
+              assets: [],
+            }),
+        }),
       );
 
       monitor = new GitHubMonitor("owner/repo", logger, current);
@@ -247,17 +246,16 @@ describe("GitHubMonitor", () => {
     ];
 
     for (const { input, expected } of testCases) {
-      mockFetch.mockImplementationOnce(
-        () =>
-          Promise.resolve({
-            ok: true,
-            status: 200,
-            json: () =>
-              Promise.resolve({
-                tag_name: input,
-                assets: [],
-              }),
-          }) as unknown as Response,
+      mockFetch.mockImplementationOnce(() =>
+        Promise.resolve({
+          ok: true,
+          status: 200,
+          json: () =>
+            Promise.resolve({
+              tag_name: input,
+              assets: [],
+            }),
+        }),
       );
 
       monitor = new GitHubMonitor("owner/repo", logger);
